@@ -276,7 +276,7 @@ def get_actions_spherical(orbit,Phi,fixed_gauss=True):
 		#give full 6D
 		r,theta,vr,vtheta,vphi = orbit
 		E = .5*(vr**2.+vtheta**2.+vphi**2.)+Phi(r,0.)
-		L = np.sqrt(vtheta**2.+vphi**2.)
+		L = r*np.sqrt(vtheta**2.+vphi**2.)
 		Jphi = r*np.sin(theta)*vphi
 	rp,ra = get_rp_ra(r,E,L,Phi)
 	if rp==BRENTERROR or ra==BRENTERROR:
@@ -288,5 +288,5 @@ def get_actions_spherical(orbit,Phi,fixed_gauss=True):
 	if len(orbit)==3.:
 		#just return the angular momentum and the radial action
 		return (L,Jr)
-	elif len(orbit)==6.:
+	elif len(orbit)==5.:
 		return (Jphi,L-np.abs(Jphi),Jr)

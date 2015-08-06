@@ -8,7 +8,7 @@ class LogHalo():
 
 	"""A flattened logarithmic halo potential"""
 
-	def __init__(self,v0=1.,q=1.,Rc=1e-8):
+	def __init__(self,v0=220.,q=1.,Rc=1e-8):
 		self.v0 = v0
 		self.q = q
 		self.Rc = Rc
@@ -82,7 +82,7 @@ class PowerLawPotential(LogHalo):
 
 	"""A power law model (can be flattened)"""
 
-	def __init__(self,v0=1.,q=1.,gamma=0.5):
+	def __init__(self,v0=220.,q=1.,gamma=0.5):
 		self.v0=v0
 		self.q=q
 		self.gamma=gamma
@@ -278,4 +278,55 @@ class CompositePotential(LogHalo):
 		return get_actions_stackelfudge(orbit,self,fixed_gauss=fixed_gauss)		
 
 
+class Isochrone(LogHalo):
 
+	def __init__(self,M=1.,b=1.):
+		self.M = M
+		self.b = b
+
+	def __call__(self,R,z):
+		r = np.sqrt(R**2.+z**2.)
+		return -_G*self.M/(self.b + np.sqrt(r**2. + self.b**2.))
+
+	def dR(self,R,z):
+		r = np.sqrt(R**2.+z**2.)
+		c = np.sqrt(self.b**2. + r**2.)
+		return _G*self.M*R*(c*(c+self.b)**2.)
+
+	def dz(self,R,z):
+		r = np.sqrt(R**2.+z**2.)
+		c = np.sqrt(self.b**2. + r**2.)
+		return _G*self.M*z*(c*(c+self.b)**2.)
+
+	def dRR(self,R,z):
+		r = np.sqrt(R**2.+z**2.)
+		c = np.sqrt(self.b**2. + r**2.)
+		return _G*self.M*(self.b**3. + self.b*z**2. +self.b**2.*c + (z**2. - 2.*R**2.)*c)/\
+									(c**3.*(c+self.b)**3.)
+
+	def dzz(self,R,z):
+		r = np.sqrt(R**2.+z**2.)
+		c = np.sqrt(self.b**2. + r**2.)
+		return _G*self.M*(self.b**3. + self.b*R**2. +self.b**2.*c + (R**2. - 2.*z**2.)*c)/\
+									(c**3.*(c+self.b)**3.)
+
+	def dRz(self,R,z):
+		r = np.sqrt(R**2.+z**2.)
+		c = np.sqrt(self.b**2. + r**2.)
+		return _G*self.M*R*z*(self.b+3.*c)/(c**3.*(self.b+c)**3.)
+
+	def analyticJs(self,orbit):
+		if len(orbit)==3:
+			r,E,L = orbit
+			Jr = _G*self.M/np.sqrt(-2.*E) - .5*(L+np.sqrt(L**2.+4.*_G*self.M*self.b))
+			return L,Jr
+		elif len(orbit)==5.:
+			r,theta,vr,vtheta,vphi = orbit
+			E = .5*(vr**2.+vtheta**2.+vphi**2.) -_G*self.M/(self.b + np.sqrt(r**2. + self.b**2.))
+			L = r*np.sqrt(vtheta**2.+vphi**2.)
+			Jphi = r*np.sin(theta)*vphi
+			Jr = _G*self.M/np.sqrt(-2.*E) - .5*(L+np.sqrt(L**2.+4.*_G*self.M*self.b))
+			return (Jphi,L-np.abs(Jphi),Jr) 
+
+	def findJs(self,orbit,fixed_gauss=True):
+		return get_actions_spherical(orbit,self,fixed_gauss=fixed_gauss)
