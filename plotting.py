@@ -258,8 +258,10 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
         plt.show()
 
 
-def gus_contour(x,y,nbins=20,ncontours=10):
+def gus_contour(x,y,nbins=20,ncontours=10,log=False):
+    """Make a basic contour plot from scattered data"""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
-    plt.contour(H,extent=extent,colors='k')
+    if not log: plt.contour(H,extent=extent,colors='k')
+    else: plt.contour(H,extent=extent,colors='k',norm=LogNorm())
     return None
