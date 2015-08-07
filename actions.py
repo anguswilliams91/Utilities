@@ -186,11 +186,6 @@ def get_actions_stackelfudge(orbit,Phi,fixed_gauss=True):
 	uorb,vorb,u0,E,Jphi,I3U,I3V,delta = get_consts(orbit,Phi)
 	umin,umax = find_umin_umax(uorb,u0,vorb,E,Jphi,I3U,Phi,delta)
 	vmin = find_vmin(vorb,uorb,E,Jphi,I3V,Phi,delta)
-	vvec = np.linspace(vmin,np.pi/2.,1000)
-	uvec = np.linspace(umin,umax,1000)
-	plt.plot(uvec,Ju_integrand(uvec,u0,vorb,E,Jphi,I3U,Phi,delta))
-	plt.figure()
-	plt.plot(vvec,Jv_integrand(vvec,uorb,E,Jphi,I3V,Phi,delta))
 	if fixed_gauss:
 		Ju = fixed_quad(Ju_integrand,umin,umax,(u0,vorb,E,Jphi,I3U,Phi,delta),n=11)[0]
 		Jv = fixed_quad(Jv_integrand,vmin,np.pi/2,(uorb,E,Jphi,I3V,Phi,delta),n=11,)[0]
