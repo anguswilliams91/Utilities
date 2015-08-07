@@ -42,13 +42,29 @@ def deriv_dU(u,v,delta,Phi):
 	dPhidu = Phi.dR(R,z)*dRdu + Phi.dz(R,z)*dzdu
 	return (np.sinh(u)**2. + np.sin(v)**2.)*dPhidu + 2.*np.sinh(u)*np.cosh(u)*Phi(R,z)
 
+def get_consts(orbit,Phi):
+	"""Given an orbit and a potential (and a focal distance), derive the exact and approximate integrals of motion"""
+	R,z,vR,vz,vphi = orbit
+	delta = find_delta(R,z,Phi) #get a decent value for delta
+	uorb, vorb = Rz2uv(R,z,delta) #get the current (u,v) coords of this orbit
+	u0 = uorb #for single orbits it doesn't matter what this is
+	E = .5*(vR**2. + vz**2. + vphi**2.) + Phi(R,z) #energy of this orbit
+	Jphi = R*vphi #angular momentum about the z-axis is an action
+	#calculate the canonical momenta at the phase space point we possess
+	pu0 = delta*(vR*np.cosh(uorb)*np.sin(vorb) + vz*np.sinh(uorb)*np.cos(vorb))
+	pv0 = delta*(vR*np.sinh(uorb)*np.cos(vorb) - vz*np.cosh(uorb)*np.sin(vorb))
+	#now the approx integrals of motion
+	I3U = E*np.sinh(uorb)**2. - pu0**2./(2.*delta**2.) - Jphi**2./(2.*delta**2.*np.sinh(uorb)**2.)-dU(uorb,u0,vorb,delta,Phi)
+	I3V = -E*np.sin(vorb)**2. + pv0**2./(2.*delta**2.) + Jphi**2./(2.*delta**2.*np.sin(vorb)**2.)-dV(uorb,vorb,delta,Phi)
+	return uorb,vorb,u0,E,Jphi,I3U,I3V,delta
+
 def pu_squared(u,u0,vorb,E,Jphi,I3U,Phi,delta):
 	"""Equation for pu^2 / 2*delta^2"""
-	return E*np.sinh(u)**2. - (I3U + dU(u,u0,vorb,delta,Phi)) - Jphi**2. / (2. * delta**2. * np.sinh(u)**2.)
+	return E*np.sinh(u)**2. - (I3U+dU(u,u0,vorb,delta,Phi)) - Jphi**2./(2.*delta**2.*np.sinh(u)**2.)
 
 def pv_squared(v,uorb,E,Jphi,I3V,Phi,delta):
 	"""Equation for pv^2 / 2*delta^2"""
-	return E*np.sin(v)**2. + (I3V + dV(uorb,v,delta,Phi)) - Jphi**2. / (2. * delta**2. * np.sin(v)**2.)
+	return E*np.sin(v)**2. + I3V+dV(uorb,v,delta,Phi) - Jphi**2./(2.*delta**2.*np.sin(v)**2.)
 
 def Ju_integrand(u,u0,vorb,E,Jphi,I3U,Phi,delta):
 	"""The integrand for Ju"""
@@ -67,22 +83,6 @@ def find_u0(uorb,vorb,Phi,delta):
 		return res.x #acceptable
 	else:
 		return uorb #can't be bothered doing something clever yet
-
-def get_consts(orbit,Phi):
-	"""Given an orbit and a potential (and a focal distance), derive the exact and approximate integrals of motion"""
-	R,z,vR,vz,vphi = orbit
-	delta = find_delta(R,z,Phi) #get a decent value for delta
-	uorb, vorb = Rz2uv(R,z,delta) #get the current (u,v) coords of this orbit
-	u0 = uorb #for single orbits it doesn't matter what this is
-	E = .5*(vR**2. + vz**2. + vphi**2.) + Phi(R,z) #energy of this orbit
-	Jphi = R*vphi #angular momentum about the z-axis is an action
-	#calculate the canonical momenta at the phase space point we possess
-	pu0 = np.abs(delta*(vR*np.cosh(uorb)*np.sin(vorb) + vz*np.sinh(uorb)*np.cos(vorb)))
-	pv0 = np.abs(delta*(vR*np.sinh(uorb)*np.cos(vorb) - vz*np.cosh(uorb)*np.sin(vorb)))
-	#calculate the approximate integrals of motion that we will need later
-	I3U = E*np.sinh(uorb)**2. - pu0**2./(2.*delta**2.) - Jphi**2./(2.*delta**2.*np.sinh(uorb)**2.) - dU(uorb,u0,vorb,delta,Phi)
-	I3V = pv0**2./(2.*delta**2.) - E*np.sin(vorb)**2. + Jphi**2./(2.*delta**2.*np.sin(vorb)**2.) - dV(uorb,vorb,delta,Phi)	
-	return uorb,vorb,u0,E,Jphi,I3U,I3V,delta
 
 def find_umin_umax(uorb,u0,vorb,E,Jphi,I3U,Phi,delta):
 	"""Find the limits of integration for the radial action"""
@@ -186,6 +186,11 @@ def get_actions_stackelfudge(orbit,Phi,fixed_gauss=True):
 	uorb,vorb,u0,E,Jphi,I3U,I3V,delta = get_consts(orbit,Phi)
 	umin,umax = find_umin_umax(uorb,u0,vorb,E,Jphi,I3U,Phi,delta)
 	vmin = find_vmin(vorb,uorb,E,Jphi,I3V,Phi,delta)
+	vvec = np.linspace(vmin,np.pi/2.,1000)
+	uvec = np.linspace(umin,umax,1000)
+	plt.plot(uvec,Ju_integrand(uvec,u0,vorb,E,Jphi,I3U,Phi,delta))
+	plt.figure()
+	plt.plot(vvec,Jv_integrand(vvec,uorb,E,Jphi,I3V,Phi,delta))
 	if fixed_gauss:
 		Ju = fixed_quad(Ju_integrand,umin,umax,(u0,vorb,E,Jphi,I3U,Phi,delta),n=11)[0]
 		Jv = fixed_quad(Jv_integrand,vmin,np.pi/2,(uorb,E,Jphi,I3V,Phi,delta),n=11,)[0]
