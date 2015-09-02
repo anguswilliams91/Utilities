@@ -1,6 +1,7 @@
 import numpy as np
 from actions import *
-from galpy.potential import MWPotential2014, evaluatePotentials, evaluateRforces,evaluatezforces,evaluateR2derivs,evaluatez2derivs,evaluateRzderivs
+from scipy.integrate import ode
+import warnings
 
 _G = 429960.6896 #Gravitational constant when speeds are measured in kms**-1, masses in 10**11 M_solar and distances in kpc. 
 
@@ -37,46 +38,19 @@ class LogHalo():
 		"""Second derivative R,z"""
 		return -self.v0**2. * R * (2.*z/self.q**2.) / (self.Rc**2. + R**2. + (z/self.q)**2.)**2.
 
+	def cartesian_force(self,x,y,z):
+		"""Return -grad(phi) at the point x,y,z for orbit integration"""
+		return -np.array([x,y,z/self.q**2.])*self.v0**2. / (x**2.+y**2.+(z/self.q)**2.)
+
 	def circspeed(self,R):
 		return np.sqrt(R * self.dR(R,0.))
 
-	def findJs(self,orbit,fixed_gauss=True):
+	def findJs(self,orbit,delta=None,fixed_gauss=True):
 		"""Find the actions for a given set of initial conditions"""
 		if self.q!=1.:
-			return get_actions_stackelfudge(orbit,self,fixed_gauss=fixed_gauss)
+			return get_actions_stackelfudge(orbit,self,delta=delta,fixed_gauss=fixed_gauss)
 		else:
 			return get_actions_spherical(orbit,self,fixed_gauss=fixed_gauss)
-
-class MilkyWay(LogHalo):
-
-	"""Wrapper for the Galpy MWPotential2014"""
-
-	def __init__(self):
-		self.pot = MWPotential2014
-
-	def __call__(self,R,z):
-		return evaluatePotentials(R,z,self.pot)
-
-	def dR(self,R,z):
-		return -evaluateRforces(R,z,self.pot)
-
-	def dz(self,R,z):
-		return -evaluatezforces(R,z,self.pot)
-
-	def dRR(self,R,z):
-		return evaluateR2derivs(R,z,self.pot)
-
-	def dzz(self,R,z):
-		return evaluatez2derivs(R,z,self.pot)
-
-	def dRz(self,R,z):
-		return evaluateRzderivs(R,z,self.pot)
-
-	def circspeed(self,R):
-		return np.sqrt(R*self.dR(R,0.))
-
-	def findJs(self,orbit,fixed_gauss=True):
-		return get_actions_stackelfudge(orbit,self,fixed_gauss=fixed_gauss)
 
 class PowerLawPotential(LogHalo):
 
@@ -111,6 +85,9 @@ class PowerLawPotential(LogHalo):
 	def dRz(self,R,z):
 		rq = np.sqrt(R**2. + (z/self.q)**2.)
 		return (R*z/self.q**2.)*(self.gamma-2.)*self.v0**2.*rq**(self.gamma-4.)
+
+	def cartesian_force(self,x,y,z):
+		return -np.array([x,y,z/self.q**2.])*self.v0**2.*(x**2.+y**2.+(z/self.q)**2.)**(.5*self.gamma-1.)
 
 	def circspeed(self,R):
 		return np.sqrt(R*self.dR(R,0.))
@@ -148,12 +125,17 @@ class MiyamotoNagai(LogHalo):
 		return -3.*_G*self.M*R*z*c*((c-self.a)*(R**2. + c**2.)**2.5)
 
 
-	def findJs(self,orbit,fixed_gauss=True):
+	def cartesian_force(self,x,y,z):
+		return -np.array([x,y,z*(self.a+np.sqrt(self.b**2.+z**2.))/np.sqrt(self.b**2.+z**2.)])*\
+							_G*self.M*(x**2.+y**2.+(self.a+np.sqrt(self.b**2.+z**2.))**2.)**-1.5
+
+
+	def findJs(self,orbit,delta=None,fixed_gauss=True):
 		"""Find the actions for a given set of initial conditions"""
 		if self.a==0.:
 			return get_actions_spherical(orbit,self,fixed_gauss=fixed_gauss)
 		else:
-			return get_actions_stackelfudge(orbit,self,fixed_gauss=fixed_gauss)
+			return get_actions_stackelfudge(orbit,self,delta=delta,fixed_gauss=fixed_gauss)
 
 class Plummer(MiyamotoNagai):
 
@@ -177,7 +159,7 @@ class NFW(LogHalo):
 
 	def __call__(self,R,z):
 		r = np.sqrt(R**2.+z**2.)
-		return -4.*np.pi*_G*self.rs**2.*np.log(1.+r/self.rs)*self.rs/r
+		return -4.*np.pi*_G*self.rho0*self.rs**2.*np.log(1.+r/self.rs)*(self.rs/r)
 
 	def dR(self,R,z):
 		r = np.sqrt(R**2.+z**2.)
@@ -206,6 +188,11 @@ class NFW(LogHalo):
 		d2phidr2 = -4.*np.pi*_G*self.rs**3.*self.rho0**2.*(r*(3.*r+2.*self.rs)-2.*(r+self.rs)**2.*np.log(1.+r/self.rs))/\
 														(r**3.*(r+self.rs)**2.)
 		return -self.dR(R,z)*(z/r**2.) + R*z*d2phidr2/r**2.
+
+	def cartesian_force(self,x,y,z):
+		r = np.sqrt(x**2.+y**2.+z**2.)
+		return np.array([x,y,z])*4.*np.pi*_G*self.rs**3.*self.rho0*((r**2.*(self.rs+r))**-1. -\
+										 np.log(1.+r/self.rs)/r**3.)
 
 	def findJs(self,orbit,fixed_gauss=True): 
 		return get_actions_spherical(orbit,self,fixed_gauss=fixed_gauss)
@@ -245,6 +232,11 @@ class Hernquist(NFW):
 		r = np.sqrt(R**2.+z**2.)
 		return R*z*(-_G*self.M*r**-3./(r+self.a)**2. + 2.*_G*self.M*r**-2./(r+self.a)**3.)
 
+	def cartesian_force(self,x,y,z):
+		r = np.sqrt(x**2.+y**2.+z**2.)
+		return -np.array([x,y,z])*_G*self.M/(r*(self.a+r)**2.)
+
+
 	def findJs(self,orbit,fixed_gauss=True):
 		return get_actions_spherical(orbit,self,fixed_gauss=fixed_gauss)
 
@@ -274,8 +266,11 @@ class CompositePotential(LogHalo):
 	def dRz(self,R,z):
 		return np.sum(map(lambda f: f.dRz(R,z), self.potlist),axis=0)
 
-	def findJs(self,orbit,fixed_gauss=True):
-		return get_actions_stackelfudge(orbit,self,fixed_gauss=fixed_gauss)		
+	def cartesian_force(self,x,y,z):
+		return np.sum(map(lambda f: f.cartesian_force(x,y,z), self.potlist),axis=0)
+
+	def findJs(self,orbit,delta=None,fixed_gauss=True):
+		return get_actions_stackelfudge(orbit,self,delta=delta,fixed_gauss=fixed_gauss)		
 
 
 class Isochrone(LogHalo):
@@ -315,6 +310,12 @@ class Isochrone(LogHalo):
 		c = np.sqrt(self.b**2. + r**2.)
 		return _G*self.M*R*z*(self.b+3.*c)/(c**3.*(self.b+c)**3.)
 
+	def cartesian_force(self,x,y,z):
+		r = np.sqrt(x**2.+y**2.+z**2.)
+		rb = np.sqrt(self.b**2.+r**2.)
+		return -np.array([x,y,z])*_G*self.M/(rb * (self.b + rb)**2.)
+
+
 	def analyticJs(self,orbit):
 		if len(orbit)==3:
 			r,E,L = orbit
@@ -330,3 +331,44 @@ class Isochrone(LogHalo):
 
 	def findJs(self,orbit,fixed_gauss=True):
 		return get_actions_spherical(orbit,self,fixed_gauss=fixed_gauss)
+
+
+
+"""Integrate orbits, mostly so we can use Jason's generating function method"""
+
+def gen_forces(t,x,pot):
+    """gives the 6D derivatives for orbit integration, i.e. [vx,vy,vz,ax,ay,az]"""
+    X,Y,Z=x[:3] #get the explicit coordinates
+    return np.concatenate((x[3:],pot.cartesian_force(X,Y,Z)))
+
+def integrate_orbit(x,tmax,pot):
+	"""Integrate an orbit with initial coordinates x = [x,y,z,vx,vy,vz] for time tmax in potential pot"""
+	solver = ode(gen_forces).set_integrator('dopri5',nsteps=1,rtol=1e-19,atol=1e-10)
+	solver.set_initial_value(x,0.).set_f_params(pot)
+	solver._integrator.iwork[2]=-1
+	warnings.filterwarnings("ignore",category=UserWarning)
+	t = np.array([0.])
+	while solver.t < tmax:
+		solver.integrate(tmax)
+		x=np.vstack((x,solver.y))
+		t=np.append(t,solver.t)
+	warnings.resetwarnings()
+	return x,t
+
+def leapfrog_integrator(x,tmax,NT,Pot):
+    deltat = tmax/NT
+    h = deltat/100.
+    t = 0.
+    counter = 0
+    X = np.copy(x)
+    results = np.array([x])
+    while(t<tmax):
+        X[3:] += 0.5*h*Pot.cartesian_force(X[0],X[1],X[2])
+        X[:3] += h*X[3:]
+        X[3:] += 0.5*h*Pot.cartesian_force(X[0],X[1],X[2])
+        # if(t==0.1):
+        if(counter % 100 == 0):
+            results=np.vstack((results,X))
+        t+=h
+        counter+=1
+    return results,np.linspace(0.,tmax,NT)

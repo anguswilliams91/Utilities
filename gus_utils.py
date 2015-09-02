@@ -4,35 +4,100 @@ from astropy.coordinates import SkyCoord
 
 
 def radec2galactic(ra,dec,degrees=True):
-	"""convert ra, dec to galactic coords. Default is that ra,dec are in degrees"""
-	if degrees:
-		c = SkyCoord(ra=ra*u.degree,dec=dec*u.degree,frame='icrs')
-		c = c.transform_to('galactic')
-		l,b = np.array(c.l)*(np.pi/180.),np.array(c.b)*(np.pi/180.)
-	else:
-		c = SkyCoord(ra=ra*u.radian,dec=dec*u.radian,frame='icrs')
-		c = c.transform_to('galactic')
-		l,b = np.array(c.l)*(np.pi/180.),np.array(c.b)*(np.pi/180.)		
-	return l,b
+    """convert ra, dec to galactic coords. Default is that ra,dec are in degrees"""
+    if degrees:
+        c = SkyCoord(ra=ra*u.degree,dec=dec*u.degree,frame='icrs')
+        c = c.transform_to('galactic')
+        l,b = np.array(c.l)*(np.pi/180.),np.array(c.b)*(np.pi/180.)
+    else:
+        c = SkyCoord(ra=ra*u.radian,dec=dec*u.radian,frame='icrs')
+        c = c.transform_to('galactic')
+        l,b = np.array(c.l)*(np.pi/180.),np.array(c.b)*(np.pi/180.)     
+    return l,b
 
 def galactic2radec(l,b,degrees=False):
-	if degrees:
-		c = SkyCoord(l=l*u.degree,b=b*u.degree,frame='galactic')
-		c = c.transform_to('icrs')
-		ra,dec = np.array(c.ra),np.array(c.dec)
-	else:
-		c = SkyCoord(l=l*u.radian,b=b*u.radian,frame='galactic')
-		c = c.transform_to('icrs')
-		ra,dec = np.array(c.ra),np.array(c.dec)	
-	return ra,dec
+    if degrees:
+        c = SkyCoord(l=l*u.degree,b=b*u.degree,frame='galactic')
+        c = c.transform_to('icrs')
+        ra,dec = np.array(c.ra),np.array(c.dec)
+    else:
+        c = SkyCoord(l=l*u.radian,b=b*u.radian,frame='galactic')
+        c = c.transform_to('icrs')
+        ra,dec = np.array(c.ra),np.array(c.dec) 
+    return ra,dec
 
-def galactic2cartesian(s,b,l):
-	"""Return x,y,z given s,b,l"""
-	return s*np.cos(b)*np.cos(l) - 8.5, s*np.cos(b)*np.sin(l), s*np.sin(b)
+def galactic2cartesian(s,b,l,Rsolar=8.5):
+    """Return x,y,z given s,b,l"""
+    return s*np.cos(b)*np.cos(l) - Rsolar, s*np.cos(b)*np.sin(l), s*np.sin(b)
 
 def helio2galactic(vLOS,l,b):
-	"""Correct a heliocentric RV using the solar peculiar motion (n.b. l and b must be in radians)"""
-	vLSR = 220.
-	vpec = [14.0,12.24,7.25] #from Schoenrich (2012)
-	return vLOS + (vpec[0]*np.cos(l) + (12.24+220.)*np.sin(l))*np.cos(b) + 7.25*np.sin(b)
+    """Correct a heliocentric RV using the solar peculiar motion (n.b. l and b must be in radians)"""
+    vLSR = 220.
+    vpec = [14.0,12.24,7.25] #from Schoenrich (2012)
+    return vLOS + (vpec[0]*np.cos(l) + (12.24+220.)*np.sin(l))*np.cos(b) + 7.25*np.sin(b)
 
+def propermotion_radec2lb(pm_ras,pm_dec,ra,dec):
+    """Convert proper motions pm_ras = mu_ra*cos(dec) and pm_dec = mu_dec to pm_ls = mu_l*cos(b),pm_b=mu_b"""
+    raG,decG = np.radians(192.85948),np.radians(27.12825) #equatorial coords of the north galactic pole
+    ra,dec = np.radians(ra),np.radians(dec)
+    C1,C2 = np.sin(decG)*np.cos(dec) - np.cos(decG)*np.sin(dec)*np.cos(ra-raG),\
+                    np.cos(decG)*np.sin(ra-raG)
+    cosb = np.sqrt(C1**2.+C2**2.)
+    pmls,pmb = cosb**-1. * (C1*pm_ras+C2*pm_dec), cosb**-1. * (-C2*pm_ras + C1*pm_dec) #do the coord transformation
+    return pmls,pmb
+
+def obs2cartesian(pm1,pm2,ra,dec,s,vhelio,radec_pms=False,Rsolar=8.5):
+    """Convert observed stuff to cartesian velocities (ra,dec must be in degrees, s in kpc and vhelio in kms-1)
+    The coordinate transformations are according to the conventions found in Bond et al. (2010)"""
+    if radec_pms: pml,pmb = propermotion_radec2lb(pm1,pm2,ra,dec)
+    else: pml,pmb = pm1,pm2
+    vl,vb = 4.74*s*pml,4.74*s*pmb #tangential motions
+    l,b = radec2galactic(ra,dec)
+    #now calculate the (uncorrected for solar motion) cartesian velocities
+    vx  = -vhelio*np.cos(l)*np.cos(b) + vb*np.cos(l)*np.sin(b) + vl*np.sin(l)
+    vy = -vhelio*np.sin(l)*np.cos(b) + vb*np.sin(l)*np.sin(b) - vl*np.cos(l)
+    vz = vhelio*np.sin(b) + vb*np.cos(b)
+    #correct for solar motion
+    vLSR,vXsun,vYsun,vZsun = -220.,-10.,-5.3,7.2
+    vx,vy,vz = vx + vXsun,vy+vYsun+vLSR,vz+vZsun
+    #now convert to cylindrical coords
+    x,y,z = galactic2cartesian(s,b,l,Rsolar=Rsolar)
+    return x,y,z,vx,vy,vz 
+
+def cartesian2cylindrical(x,y,z,vx,vy,vz):
+    """Convert cartesian positions and velocities into cylindrical ones"""
+    R = np.sqrt(x**2.+y**2.)
+    phi = np.arctan2(y,x)
+    vR = (vx*x+vy*y)/R
+    vphi = (-vx*y+vy*x)/R
+    return R,z,phi,vR,vz,vphi
+
+def cartesian2spherical(x,y,z,vx,vy,vz):
+    """Convert cartesian positions and velocities into spherical ones"""
+    r = np.sqrt(x**2.+y**2.+z**2.)
+    theta = np.arccos(z/r)
+    phi = np.arctan2(y,x)
+    st,ct,sp,cp = np.sin(theta),np.cos(theta),np.sin(phi),np.cos(phi)
+    vr,vtheta,vphi = vx*st*cp+vy*st*sp+vz*ct,vx*cp*ct+vy*sp*ct-vz*st,-vx*sp+vy*cp
+    return r,theta,phi,vr,vtheta,vphi
+
+def cylindrical2spherical(R,z,vR,vz):
+    """Convert cylindrical velocities to spherical ones"""
+    r=np.sqrt(R**2.+z**2.)
+    return vR*(R/r) + vz*(z/r), vR*(z/r) - vz*(R/r) #vr,vtheta
+
+def cylindrical2spheroidal(delta,R,z,vR,vz):
+    """Compute the stackel velocities given cylindrical velocities and positions"""
+    #Transform R and z to u and v
+    d12= (z+delta)**2.+R**2.
+    d22= (z-delta)**2.+R**2.
+    coshu= 0.5/delta*(np.sqrt(d12)+np.sqrt(d22))
+    cosv=  0.5/delta*(np.sqrt(d12)-np.sqrt(d22))
+    u= np.arccosh(coshu)
+    v= np.arccos(cosv)
+    
+    #now calculate the velocities
+    vu = (vR*np.cosh(u)*np.sin(v) + vz*np.sinh(u)*np.cos(v))/np.sqrt(np.sinh(u)**2.+np.sin(v)**2.)
+    vv = (vR*np.sinh(u)*np.cos(v) - vz*np.cosh(u)*np.sin(v))/np.sqrt(np.sinh(u)**2.+np.sin(v)**2.)
+
+    return vu,vv

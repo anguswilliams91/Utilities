@@ -7,6 +7,7 @@ from scipy.integrate import fixed_quad,quad
 """This stuff will find the actions in a general axisymmetric potential using the stackel fudge of Binney (2012)"""
 
 BRENTERROR= 123000.
+ACTERROR=123400.
 
 def uv2Rz(u,v,delta):
 	"""Transform from confocal ellipsoidal coords to cylindrical coords"""
@@ -42,10 +43,13 @@ def deriv_dU(u,v,delta,Phi):
 	dPhidu = Phi.dR(R,z)*dRdu + Phi.dz(R,z)*dzdu
 	return (np.sinh(u)**2. + np.sin(v)**2.)*dPhidu + 2.*np.sinh(u)*np.cosh(u)*Phi(R,z)
 
-def get_consts(orbit,Phi):
+def get_consts(orbit,Phi,delta=None):
 	"""Given an orbit and a potential (and a focal distance), derive the exact and approximate integrals of motion"""
 	R,z,vR,vz,vphi = orbit
-	delta = find_delta(R,z,Phi) #get a decent value for delta
+	gotdelta=False
+	if delta is None:
+		delta = find_delta(R,z,Phi) #get a decent value for delta
+		gotdelta=True
 	uorb, vorb = Rz2uv(R,z,delta) #get the current (u,v) coords of this orbit
 	u0 = uorb #for single orbits it doesn't matter what this is
 	E = .5*(vR**2. + vz**2. + vphi**2.) + Phi(R,z) #energy of this orbit
@@ -56,7 +60,8 @@ def get_consts(orbit,Phi):
 	#now the approx integrals of motion
 	I3U = E*np.sinh(uorb)**2. - pu0**2./(2.*delta**2.) - Jphi**2./(2.*delta**2.*np.sinh(uorb)**2.)-dU(uorb,u0,vorb,delta,Phi)
 	I3V = -E*np.sin(vorb)**2. + pv0**2./(2.*delta**2.) + Jphi**2./(2.*delta**2.*np.sin(vorb)**2.)-dV(uorb,vorb,delta,Phi)
-	return uorb,vorb,u0,E,Jphi,I3U,I3V,delta
+	if gotdelta: return uorb,vorb,u0,E,Jphi,I3U,I3V,delta
+	else: return uorb,vorb,u0,E,Jphi,I3U,I3V
 
 def pu_squared(u,u0,vorb,E,Jphi,I3U,Phi,delta):
 	"""Equation for pu^2 / 2*delta^2"""
@@ -181,14 +186,23 @@ def findstart_uminumax(uorb,u0,vorb,E,Jphi,I3U,Phi,delta,umax=False):
 	if utry<1e-9: return 0.
 	return utry
 
-def get_actions_stackelfudge(orbit,Phi,fixed_gauss=True):
+def get_actions_stackelfudge(orbit,Phi,delta=None,fixed_gauss=True):
 	"""Obtain the actions for an orbit (R,z,vR,vz,vphi) in the potential Phi(R,z)"""
-	uorb,vorb,u0,E,Jphi,I3U,I3V,delta = get_consts(orbit,Phi)
+	if delta is None: uorb,vorb,u0,E,Jphi,I3U,I3V,delta = get_consts(orbit,Phi,delta=delta)
+	else: uorb,vorb,u0,E,Jphi,I3U,I3V  = get_consts(orbit,Phi,delta=delta)
 	umin,umax = find_umin_umax(uorb,u0,vorb,E,Jphi,I3U,Phi,delta)
 	vmin = find_vmin(vorb,uorb,E,Jphi,I3V,Phi,delta)
 	if fixed_gauss:
-		Ju = fixed_quad(Ju_integrand,umin,umax,(u0,vorb,E,Jphi,I3U,Phi,delta),n=11)[0]
-		Jv = fixed_quad(Jv_integrand,vmin,np.pi/2,(uorb,E,Jphi,I3V,Phi,delta),n=11,)[0]
+		try:
+			Ju = fixed_quad(Ju_integrand,umin,umax,(u0,vorb,E,Jphi,I3U,Phi,delta),n=11)[0]
+		except TypeError:
+			print "Can't find this Ju. {}".format(orbit)
+			return ACTERROR*np.ones(3)
+		try:
+			Jv = fixed_quad(Jv_integrand,vmin,np.pi/2,(uorb,E,Jphi,I3V,Phi,delta),n=11,)[0]
+		except TypeError:
+			print "Can't find this Jv. {}".format(orbit)
+			return ACTERROR*np.ones(3)
 	else:
 		Ju = quad(Ju_integrand,umin,umax,(u0,vorb,E,Jphi,I3U,Phi,delta))[0]
 		Jv = quad(Jv_integrand,vmin,np.pi/2,(uorb,E,Jphi,I3V,Phi,delta))[0]
