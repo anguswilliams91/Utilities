@@ -96,7 +96,7 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, truevals = None, display = False, burnin=None ):
+def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, truevals = None, display = False, burnin=None, fontsize=20 ):
 
     """Plot a corner plot from an MCMC chain"""
 
@@ -193,7 +193,7 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
     hist_1d_axes[n_traces - 1].plot(xplot, yplot, color = 'k')
     hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color='r',alpha=0.3)
     hist_1d_axes[n_traces - 1].set_xlim( walls[0], walls[-1] )
-    hist_1d_axes[n_traces - 1].set_xlabel(axis_labels[-1])
+    hist_1d_axes[n_traces - 1].set_xlabel(axis_labels[-1],fontsize=fontsize)
     hist_1d_axes[n_traces - 1].xaxis.set_major_locator(MaxNLocator(4))
     hist_1d_axes[n_traces - 1].yaxis.set_visible(False)
 
@@ -243,11 +243,11 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
 
     #Finally Add the Axis Labels
     for x_var in xrange(n_traces - 1):
-        hist_2d_axes[(x_var, n_traces-1)].set_xlabel(axis_labels[x_var],fontsize=20)
+        hist_2d_axes[(x_var, n_traces-1)].set_xlabel(axis_labels[x_var],fontsize=fontsize)
 
         hist_2d_axes[(x_var, n_traces-1)].xaxis.set_major_locator(MaxNLocator(4))
     for y_var in xrange(1, n_traces ):
-        hist_2d_axes[(0,y_var)].set_ylabel(axis_labels[y_var],fontsize=20)
+        hist_2d_axes[(0,y_var)].set_ylabel(axis_labels[y_var],fontsize=fontsize)
         hist_2d_axes[(0,y_var)].yaxis.set_major_locator(MaxNLocator(4))
 
     if fname != None:
@@ -258,10 +258,14 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
         plt.show()
 
 
-def gus_contour(x,y,nbins=20,ncontours=10,log=False):
+def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k'):
     """Make a basic contour plot from scattered data"""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
-    if not log: plt.contour(H,extent=extent,colors='k')
-    else: plt.contour(H,extent=extent,colors='k',norm=LogNorm())
+    if not log: plt.contour(H,ncontours,extent=extent,colors=linecolor)
+    else: plt.contour(H,ncontours,extent=extent,colors=linecolor,norm=LogNorm())
+    if histunder and not log:
+        plt.hist2d(x,y,bins=nbins,cmap=cmap)
+    elif histunder:
+        plt.hist2d(x,y,bins=nbins,norm=LogNorm(),cmap=cmap)
     return None

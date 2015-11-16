@@ -28,7 +28,7 @@ def galactic2radec(l,b,degrees=False):
 
 def galactic2cartesian(s,b,l,Rsolar=8.5):
     """Return x,y,z given s,b,l"""
-    return s*np.cos(b)*np.cos(l) - Rsolar, s*np.cos(b)*np.sin(l), s*np.sin(b)
+    return -s*np.cos(b)*np.cos(l) + Rsolar, -s*np.cos(b)*np.sin(l), s*np.sin(b)
 
 def helio2galactic(vLOS,l,b):
     """Correct a heliocentric RV using the solar peculiar motion (n.b. l and b must be in radians)"""
@@ -46,7 +46,7 @@ def propermotion_radec2lb(pm_ras,pm_dec,ra,dec):
     pmls,pmb = cosb**-1. * (C1*pm_ras+C2*pm_dec), cosb**-1. * (-C2*pm_ras + C1*pm_dec) #do the coord transformation
     return pmls,pmb
 
-def obs2cartesian(pm1,pm2,ra,dec,s,vhelio,radec_pms=False,Rsolar=8.5):
+def obs2cartesian(pm1,pm2,ra,dec,s,vhelio,radec_pms=False,Rsolar=8.5,Schoenrich=True):
     """Convert observed stuff to cartesian velocities (ra,dec must be in degrees, s in kpc and vhelio in kms-1)
     The coordinate transformations are according to the conventions found in Bond et al. (2010)"""
     if radec_pms: pml,pmb = propermotion_radec2lb(pm1,pm2,ra,dec)
@@ -58,7 +58,11 @@ def obs2cartesian(pm1,pm2,ra,dec,s,vhelio,radec_pms=False,Rsolar=8.5):
     vy = -vhelio*np.sin(l)*np.cos(b) + vb*np.sin(l)*np.sin(b) - vl*np.cos(l)
     vz = vhelio*np.sin(b) + vb*np.cos(b)
     #correct for solar motion
-    vLSR,vXsun,vYsun,vZsun = -220.,-10.,-5.3,7.2
+    if not Schoenrich:
+        vLSR,vXsun,vYsun,vZsun = -220.,-10.,-5.3,7.2
+    else:
+        #use updated LSR from Schoenrich and Bovy's circular speed
+        vLSR,vXsun,vYsun,vZsun = -240., -11.1, -12.24, 7.25
     vx,vy,vz = vx + vXsun,vy+vYsun+vLSR,vz+vZsun
     #now convert to cylindrical coords
     x,y,z = galactic2cartesian(s,b,l,Rsolar=Rsolar)
@@ -100,4 +104,42 @@ def cylindrical2spheroidal(delta,R,z,vR,vz):
     vu = (vR*np.cosh(u)*np.sin(v) + vz*np.sinh(u)*np.cos(v))/np.sqrt(np.sinh(u)**2.+np.sin(v)**2.)
     vv = (vR*np.sinh(u)*np.cos(v) - vz*np.cosh(u)*np.sin(v))/np.sqrt(np.sinh(u)**2.+np.sin(v)**2.)
 
-    return vu,vv
+    return u,v,vu,vv
+
+def spherical2cartesian(r,theta,phi,vr,vtheta,vphi):
+    x,y,z = r*np.sin(theta)*np.cos(phi),r*np.sin(theta)*np.sin(phi),r*np.cos(theta)
+    vx = vr*np.sin(theta)*np.cos(phi) + vtheta*np.cos(theta)*np.cos(phi) - vphi*np.sin(phi)
+    vy = vr*np.sin(theta)*np.sin(phi) + vtheta*np.cos(theta)*np.sin(phi) + vphi*np.cos(phi)
+    vz = vr*np.cos(theta) - vtheta*np.sin(theta)
+
+    return x,y,z,vx,vy,vz
+
+def cartesian2observable(x,y,z,vx,vy,vz,Rsolar=8.5,Schoenrich=True):
+    """Transform cartesian coords to (s,l,b,vLOS,mul,mub)"""
+    s = np.sqrt((x-Rsolar)**2.+y**2.+z**2.)
+    b = np.arcsin(z/s)
+    l = np.arctan2(y,(x-Rsolar))+np.pi
+    if not Schoenrich:
+        vLSR,vXsun,vYsun,vZsun = -220.,-10.,-5.3,7.2
+    else:
+        #use updated LSR from Schoenrich and Bovy's circular speed
+        vLSR,vXsun,vYsun,vZsun = -240., -11.1, -12.24, 7.25
+    vx,vy,vz = vx - vXsun,vy-vYsun-vLSR,vz-vZsun #transform to frame where we haven't corrected for solar motion
+    sb,cb,sl,cl = np.sin(b),np.cos(b),np.sin(l),np.cos(l)
+    vLOS = vz*sb-cb*(vx*cl+vy*sl)
+    vl = -vy*cl+vx*sl
+    vb = cb*(vz+vx*cl*(sb/cb)+vy*sl*(sb/cb))
+    pml,pmb = vl/(4.74*s),vb/(4.74*s)
+    ra,dec = galactic2radec(l,b)
+    return pml,pmb,ra,dec,s,vLOS
+
+
+class FuncWrapper(object):
+    #wrap functions with this so that they are pickleable
+    def __init__(self, f, args=[], kwargs={}):
+        self.f = f
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, x):
+        return self.f(x, *self.args, **self.kwargs)
