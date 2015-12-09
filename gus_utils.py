@@ -208,7 +208,7 @@ def chain_results(chain,burnin=None):
     For each parameter a tuple is returned (best_fit, +err, -err)"""
     nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
     chain = chain[nwalkers*burnin:,:]
-    return map(lambda v: (v[1],v[2]-v[1],v[1]-v[0]),\
+    return map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
                 zip(*np.percentile(chain[:,1:],[16,50,84],axis=0))
 
 
