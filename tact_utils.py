@@ -17,6 +17,7 @@ def GetActions(w,pot,actionfinder):
 	e = .5*(vx**2.+vy**2.+vz**2.)+pot(np.array([x,y,z]))
 	#some potentials don't tend to 0. as we approach spatial infinity
 	if e>pot(1e3*np.ones(3)):
+		print "The orbit is unbound or has a huge apocenter, disregard the actions here"
 		return ACTERROR*np.ones(3)
 	else:
 		return actionfinder.actions(np.array(w))
