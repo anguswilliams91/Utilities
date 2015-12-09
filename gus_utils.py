@@ -209,7 +209,7 @@ def chain_results(chain,burnin=None):
     nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
     chain = chain[nwalkers*burnin:,:]
     return map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
-                zip(*np.percentile(chain[:,1:],[16,50,84],axis=0))
+                zip(*np.percentile(chain[:,1:],[16,50,84],axis=0)))
 
 
 class FuncWrapper(object):
