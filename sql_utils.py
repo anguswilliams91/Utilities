@@ -330,8 +330,8 @@ def upload(tableName, arrays, names, db="wsdb", driver="psycopg2", user=None,
        
 
                
-def local_join(query, tableName, arrays, names, db="wsdb", driver="psycopg2", user=None,
-                                                                                password=None, host='locahost',
+def local_join(query, tableName, arrays, names, db="wsdb", driver="psycopg2", user="gus",
+                                                                                password="Uvf5vNCyC", host='cappc127',
                                                                                 port=5432,
                                                                                 conn=None, preamb=None, timeout=None,
                                         strLength=20, asDict=False):
@@ -357,4 +357,3 @@ def local_join(query, tableName, arrays, names, db="wsdb", driver="psycopg2", us
         if not connSupplied:
                 conn.close()
         return res
-
