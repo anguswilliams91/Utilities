@@ -258,14 +258,70 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
         plt.show()
 
 
-def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k'):
-    """Make a basic contour plot from scattered data"""
+def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest'):
+    """Make a basic contour plot from scattered data, interp can be 'nearest','linear','bilinear','bicubic' etc."""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
-    if not log: plt.contour(H,ncontours,extent=extent,colors=linecolor)
-    else: plt.contour(H,ncontours,extent=extent,colors=linecolor,norm=LogNorm())
-    if histunder and not log:
-        plt.hist2d(x,y,bins=nbins,cmap=cmap)
-    elif histunder:
-        plt.hist2d(x,y,bins=nbins,norm=LogNorm(),cmap=cmap)
+    if ax is None:
+        if not log: plt.contour(H,ncontours,extent=extent,colors=linecolor)
+        else:
+            levels = np.logspace(.2*np.max(np.log(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
+            plt.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
+        if histunder and not log:
+            plt.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+        elif histunder:
+            plt.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
+    else:
+        if not log: ax.contour(H,ncontours,extent=extent,colors=linecolor)
+        else:
+            levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
+            ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
+        if histunder and not log:
+            ax.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+        elif histunder:
+            ax.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
     return None
+
+def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',f = lambda x: np.mean(x)):
+    """Plot a map of the scalar function s as a function of x and y, given irregular data. Overplot contours of x and y. The mean of 
+    s in each bin is plotted"""
+    if logscalar is True and any(s<0.) is True:
+        print "Can't log scale a quantity that isn't positive definite!"
+        return None 
+    H,yedges,xedges = np.histogram2d(y,x,bins=nbins) #histogram the data
+    extent = [xedges[0],xedges[-1],yedges[0],yedges[-1]]
+    S = np.zeros_like(H)
+    for i in np.arange(nbins):
+        for j in np.arange(nbins):
+            if i==nbins-1 and j!=nbins-1:
+                idx = (x>=xedges[i])*(x<=xedges[i+1])*(y>=yedges[j])*(y<yedges[j+1])
+            elif i!=nbins-1 and j==nbins-1:
+                idx = (x>=xedges[i])*(x<xedges[i+1])*(y>=yedges[j])*(y<=yedges[j+1])
+            elif i==nbins-1 and j==nbins-1:
+                idx = (x>=xedges[i])*(x<=xedges[i+1])*(y>=yedges[j])*(y<=yedges[j+1])
+            else:
+                idx = (x>=xedges[i])*(x<xedges[i+1])*(y>=yedges[j])*(y<yedges[j+1])
+            if mean: S[i,j] = f(s[idx])
+    S = np.flipud(np.rot90(S)) #stuff for imshow
+    if ax is None:
+        if not logdens: plt.contour(H,ncontours,extent=extent,colors=linecolor)
+        else:
+            levels = np.logspace(.2*np.max(np.log(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
+            plt.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
+        if not logscalar:
+            plt.imshow(S,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+        else:
+            plt.imshow(S,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
+    else:
+        if not logdens: ax.contour(H,ncontours,extent=extent,colors=linecolor)
+        else:
+            levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
+            ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
+        if not logscalar:
+            ax.imshow(S,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+        else:
+            ax.imshow(S,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+    return None    
+
+
+

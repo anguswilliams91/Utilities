@@ -2,6 +2,9 @@ import numpy as np
 import astropy.units as u 
 from astropy.coordinates import SkyCoord
 
+abundancefile = "/home/aamw3/Dropbox/PhD_dd/python_utils/asplund_abundances.txt"
+elements = np.genfromtxt(abundancefile,usecols=0,dtype=str)
+solarabundances = np.genfromtxt(abundancefile,usecols=1,dtype=np.float64)
 
 def radec2galactic(ra,dec,degrees=True):
     """convert ra, dec to galactic coords. Default is that ra,dec are in degrees"""
@@ -30,11 +33,9 @@ def galactic2cartesian(s,b,l,Rsolar=8.5):
     """Return x,y,z given s,b,l"""
     return -s*np.cos(b)*np.cos(l) + Rsolar, -s*np.cos(b)*np.sin(l), s*np.sin(b)
 
-def helio2galactic(vLOS,l,b):
+def helio2galactic(vLOS,l,b,vcirc=240.,vpec= [14.0,12.24,7.25]):
     """Correct a heliocentric RV using the solar peculiar motion (n.b. l and b must be in radians)"""
-    vLSR = 220.
-    vpec = [14.0,12.24,7.25] #from Schoenrich (2012)
-    return vLOS + (vpec[0]*np.cos(l) + (12.24+220.)*np.sin(l))*np.cos(b) + 7.25*np.sin(b)
+    return vLOS + (vpec[0]*np.cos(l) + (vpec[1]+vcirc)*np.sin(l))*np.cos(b) + vpec[2]*np.sin(b)
 
 def propermotion_radec2lb(pm_ras,pm_dec,ra,dec):
     """Convert proper motions pm_ras = mu_ra*cos(dec) and pm_dec = mu_dec to pm_ls = mu_l*cos(b),pm_b=mu_b"""
@@ -133,6 +134,84 @@ def cartesian2observable(x,y,z,vx,vy,vz,Rsolar=8.5,Schoenrich=True):
     ra,dec = galactic2radec(l,b)
     return pml,pmb,ra,dec,s,vLOS
 
+def correct_abundance(abun,feh,elemstr):
+    """Correct an abundance to relative to solar, from a log epsilon measurement, using asplund 2009"""
+    if elemstr in elements:
+        solarabun = np.float(solarabundances[np.where(elements==elemstr)])
+        return abun - feh - solarabun
+    else:
+        print "Unrecognised element!"
+        return None
+
+def radec2sag(ra,dec,indegrees=True,outdegrees=True):
+    """Coordinates from Vasily's 2014 paper for sag (tilda coords from appendix A)"""
+    if indegrees: ra,dec = np.radians(ra),np.radians(dec)
+    lambdat = np.arctan2(-0.93595354*np.cos(ra)*np.cos(dec) - 0.31910658*np.sin(ra)*np.cos(dec) + \
+                            0.14886895*np.sin(dec), 0.21215555*np.cos(ra)*np.cos(dec) - \
+                            0.84846291*np.sin(ra)*np.cos(dec) - 0.48487186*np.sin(dec))
+    Bt = np.arcsin(0.28103559*np.cos(ra)*np.cos(dec) - 0.42223415*np.sin(ra)*np.cos(dec) + 0.86182209*np.sin(dec))
+    if outdegrees: return np.degrees(lambdat),np.degrees(Bt)
+    else: return lambdat, Bt
+
+def sag2radec(lambdat,Bt,indegrees=False):
+    """Go the other way to the above function"""
+    if indegrees: lambdat,Bt = np.radians(lambdat),np.radians(Bt)
+    ra = np.arctan2(-0.84846291*np.cos(lambdat)*np.cos(Bt)-0.31910658*np.sin(lambdat)*np.cos(Bt)-0.42223415*np.sin(Bt),\
+                        0.21215555*np.cos(lambdat)*np.cos(Bt) - 0.93595354*np.sin(lambdat)*np.cos(Bt)+0.28103559*np.sin(Bt))
+    dec = np.arcsin(-0.48487186*np.cos(lambdat)*np.cos(Bt)+0.14886895*np.sin(lambdat)*np.cos(Bt)+0.86182209*np.sin(Bt))
+    return np.degrees(ra),np.degrees(dec)
+
+def angular_radius_selection(ra,dec,pos,radius):
+    """Grab everything within a specific angular radius on the sky [ra0,dec0] is the centre of the 
+    circle and radius is the angular radius of the region in degrees"""
+    ra0,dec0 = pos
+    idx = np.sin(dec0)*np.sin(dec) + np.cos(dec0)*np.cos(dec)*np.cos(ra0-ra) > np.cos(np.pi*radius/180.)
+    return ra[idx],dec[idx],idx
+
+def BHB_distance(g,r):
+    """given the SDSS g and r band magnitudes of a BHB, compute its distance using the relation from Deason et al. (2011)"""
+    G =  0.434 - 0.169*(g-r) +2.319*(g-r)**2. + 20.449*(g-r)**3. + 94.517*(g-r)**4.
+    mu = g-G
+    return (10.**(1.+.2*mu))/1000. #distance in kpc
+
+"""Stuff for emcee"""
+
+def reshape_chain(chain):
+    #take numpy array of shape (nwalkers*nsteps,ndim+1) and reshape to (nwalkers,nsteps,ndim)
+    nwalkers = len(np.unique(chain[:,0]))
+    nsteps = len(chain[:,0])/nwalkers
+    ndim = np.shape(chain)[1]-1
+    c = np.zeros((nwalkers,nsteps,ndim))
+    #put the chains into the right shape
+    for i in np.arange(nwalkers):
+        idx = chain[:,0]==i
+        for j in np.arange(1,ndim+1):
+            c[i,:,j-1] = chain[idx,j]
+    return c
+
+def GelmanRubin(chain,burnin=None):
+    """Perform the Gelman-Rubin test for convergence"""
+    c = reshape_chain(chain)
+    if burnin is not None:
+        c=c[:,burnin:,:]
+    nwalkers,nsteps,ndim = np.shape(c)
+    gr = np.zeros(ndim)
+    for j in np.arange(ndim):
+        a = np.mean(np.var(c[:,:,j],axis=1))
+        b = np.var(np.mean(c[:,:,j],axis=1))
+        va = (1.-np.float(nsteps)**-1.)*a + (1./np.float(nsteps))*b
+        gr[j]=np.sqrt(va/a)
+    return gr
+
+def chain_results(chain,burnin=None):
+    """Get the results from a chain using the 16th, 50th and 84th percentiles. 
+    For each parameter a tuple is returned (best_fit, +err, -err)"""
+    if burnin:
+        nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
+        chain = chain[nwalkers*burnin:,:]
+    return map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
+                zip(*np.percentile(chain[:,1:],[16,50,84],axis=0)))
+
 
 class FuncWrapper(object):
     #wrap functions with this so that they are pickleable
@@ -143,3 +222,4 @@ class FuncWrapper(object):
 
     def __call__(self, x):
         return self.f(x, *self.args, **self.kwargs)
+
