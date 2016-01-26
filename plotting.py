@@ -11,6 +11,8 @@ from matplotlib.pyplot import rc, axes
 from sys import stderr
 import matplotlib.cm as cm
 import matplotlib.colorbar as cbar
+import pylab
+import matplotlib.colors as colors
 
 
 def scatter_contour(x, y,
@@ -96,16 +98,20 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, truevals = None, display = False, burnin=None, fontsize=20 ):
+def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truevals = None, display = False, burnin=None, fontsize=20 ):
 
     """Plot a corner plot from an MCMC chain"""
 
     major_formatter = FuncFormatter(my_formatter)
+    nwalkers = len(np.unique(chain[:,0]))
 
     if burnin is not None:
-        traces = chain[burnin:,1:].T
+        traces = chain[nwalkers*burnin:,1:].T
     else:  
         traces = chain[:,1:].T
+
+    if axis_labels is None:
+        axis_labels = ['']*len(traces)
 
     #Defines the widths of the plots in inches
     plot_width = 15.
@@ -190,8 +196,14 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
     yplot[0] = yplot[1]
     yplot[-1] = yplot[-2]
 
+    levels = [0.,0.68,0.95]
+    Cmap = colors.Colormap(cmap)
+    cNorm = colors.Normalize(vmin=0.,vmax=np.max(levels))
+    scalarMap = cm.ScalarMappable(norm=cNorm,cmap=cmap)
+    cVal = scalarMap.to_rgba(levels[1])
+
     hist_1d_axes[n_traces - 1].plot(xplot, yplot, color = 'k')
-    hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color='r',alpha=0.3)
+    hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color=cVal)
     hist_1d_axes[n_traces - 1].set_xlim( walls[0], walls[-1] )
     hist_1d_axes[n_traces - 1].set_xlabel(axis_labels[-1],fontsize=fontsize)
     hist_1d_axes[n_traces - 1].xaxis.set_major_locator(MaxNLocator(4))
@@ -208,14 +220,16 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
                 else:
                     H, y_edges, x_edges = np.histogram2d( traces[y_var][:num_samples], traces[x_var][:num_samples],\
                                                            bins = nbins )
-                x_bin_sizes,y_bin_sizes = (x_edges[1:]-x_edges[:-1]).reshape((1,nbins)), (y_edges[1:]-y_edges[:-1])    
-                X,Y = 0.5*(x_edges[1:]+x_edges[:-1]), 0.5*(y_edges[1:]+y_edges[:-1])
-                pdf = (H*(x_bin_sizes*y_bin_sizes))
-                H = H[::-1]
-                extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
-                hist_2d_axes[(x_var,y_var)].imshow(H, extent=extent, \
-                             aspect='auto', interpolation='nearest',cmap='hot_r')
-                hist_2d_axes[(x_var,y_var)].contour(X,Y,pdf,3,colors='0.5',linewidth=0.25)
+                # x_bin_sizes,y_bin_sizes = (x_edges[1:]-x_edges[:-1]).reshape((1,nbins)), (y_edges[1:]-y_edges[:-1])    
+                # X,Y = 0.5*(x_edges[1:]+x_edges[:-1]), 0.5*(y_edges[1:]+y_edges[:-1])
+                # pdf = (H*(x_bin_sizes*y_bin_sizes))
+                # H = H[::-1]
+                # extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
+                confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],intervals=None,nbins=20,linecolor='0.5',filled=filled,cmap=cmap)
+                # hist_2d_axes[(x_var,y_var)].imshow(H, extent=extent, \
+                #              aspect='auto', interpolation='nearest',cmap='hot_r')
+                # hist_2d_axes[(x_var,y_var)].contour(X,Y,pdf,3,colors='0.5',linewidth=0.25)
+
                 if truevals != None:
                     hist_2d_axes[(x_var,y_var)].plot( truevals[x_var], truevals[y_var], '+', color = '0.3', markersize = 30 )
                     hist_2d_axes[(x_var, y_var)].set_xlim( extent[0], extent[1] )
@@ -237,7 +251,7 @@ def triangle_plot( chain, axis_labels, fname = None, nbins=100, norm = None, tru
             yplot[-1] = yplot[-2]
 
             hist_1d_axes[x_var].plot(xplot, yplot, color = 'k' )
-            hist_1d_axes[x_var].fill_between(xplot,yplot,color='r',alpha=0.3)
+            hist_1d_axes[x_var].fill_between(xplot,yplot,color=cVal)
 
             hist_1d_axes[x_var].set_xlim( x_edges[0], x_edges[-1] )
 
@@ -361,7 +375,49 @@ def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="hot_r",colorlines=False,density=1
     return None
 
 
+def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k',histunder=False,cmap="hot_r",filled=False):
+    """Draw confidence intervals at the levels asked from a 2d sample of points (e.g. 
+        output of MCMC)"""
+    if intervals is None:
+        #intervals  = 1.0 - np.exp(-0.5 * np.arange(0.5, 2.1, 0.5) ** 2)
+        intervals = [0.,0.68,0.95]
+    H,yedges,xedges = np.histogram2d(ysamples,xsamples,bins=nbins)
 
 
+    #get the contour levels
+    h = H.flatten()
+    h = h[np.argsort(h)[::-1]]
+    sm = np.cumsum(h)
+    sm/=sm[-1]
+    v = np.empty(len(intervals))
+    for i,v0 in enumerate(intervals):
+        try:
+            v[i] = h[sm <= v0][-1]
+        except:
+            v[i] = h[0]
 
+    xc = np.array([.5*(xedges[i]+xedges[i+1]) for i in np.arange(nbins)]) #bin centres
+    yc = np.array([.5*(yedges[i]+yedges[i+1]) for i in np.arange(nbins)])
+
+    xx,yy = np.meshgrid(xc,yc)
+
+    if ax is None:
+        if histunder:
+            plt.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
+            plt.contour(xx,yy,H,levels=v,colors=linecolor,extend='max')
+        elif filled:
+            plt.contourf(xx,yy,H,levels=v[::-1],cmap=cmap)
+        else:
+            plt.contour(xx,yy,H,levels=v,colors=linecolor)
+    else:
+        if histunder:
+            ax.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max')
+        elif filled:
+            ax.contourf(xx,yy,H,levels=v[::-1],cmap=cmap)
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max')
+        else:
+            ax.contour(xx,yy,H,levels=v,colors=linecolor)        
+
+    return None
 
