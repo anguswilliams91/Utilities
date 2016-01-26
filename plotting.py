@@ -289,39 +289,79 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
         print "Can't log scale a quantity that isn't positive definite!"
         return None 
     H,yedges,xedges = np.histogram2d(y,x,bins=nbins) #histogram the data
+    H_s,yedges,xedges = np.histogram2d(y,x,weights=s,bins=nbins) #histogram with the scalar as the weight so that H_s/H is the mean of s in each bin
     extent = [xedges[0],xedges[-1],yedges[0],yedges[-1]]
-    S = np.zeros_like(H)
-    for i in np.arange(nbins):
-        for j in np.arange(nbins):
-            if i==nbins-1 and j!=nbins-1:
-                idx = (x>=xedges[i])*(x<=xedges[i+1])*(y>=yedges[j])*(y<yedges[j+1])
-            elif i!=nbins-1 and j==nbins-1:
-                idx = (x>=xedges[i])*(x<xedges[i+1])*(y>=yedges[j])*(y<=yedges[j+1])
-            elif i==nbins-1 and j==nbins-1:
-                idx = (x>=xedges[i])*(x<=xedges[i+1])*(y>=yedges[j])*(y<=yedges[j+1])
-            else:
-                idx = (x>=xedges[i])*(x<xedges[i+1])*(y>=yedges[j])*(y<yedges[j+1])
-            if mean: S[i,j] = f(s[idx])
-    S = np.flipud(np.rot90(S)) #stuff for imshow
     if ax is None:
         if not logdens: plt.contour(H,ncontours,extent=extent,colors=linecolor)
         else:
             levels = np.logspace(.2*np.max(np.log(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
             plt.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
         if not logscalar:
-            plt.imshow(S,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+            plt.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         else:
-            plt.imshow(S,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
+            plt.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
     else:
         if not logdens: ax.contour(H,ncontours,extent=extent,colors=linecolor)
         else:
             levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
             ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
         if not logscalar:
-            ax.imshow(S,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+            ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         else:
-            ax.imshow(S,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
-    return None    
+            ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+    return None  
+
+def scalarmap1D(x,s=None,nbins=10,f=lambda x: np.mean(x),ax=None,log=False):
+    """same as above but for 1D case, if s is None then just does a density plot"""
+    H,xedges = np.histogram(x,bins=nbins)
+    if s is not None:
+        H_s,xedges = np.histogram(x,weight=s,bins=nbins)
+        fs = H_s/H
+    else:
+        fs = H
+    xc = np.array([np.mean([xedges[i],xedges[i+1]]) for i in np.arange(nbins)])
+    if ax is None and log:
+        plt.loglog(xc,fs)
+    elif ax is None and not log:
+        plt.plot(xc,fs)
+    elif ax is not None and log:
+        ax.loglog(xc,fs)
+    else:
+        ax.plot(xc,fs)
+    return None
+
+def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="hot_r",colorlines=False,density=1.,linecolor='k'):
+    """Make a streamplot of a 2D vector quantity, but averaged in a grid of pixels"""
+    #Simon's hack for getting the means quick
+    H,yedges,xedges = np.histogram2d(y,x,bins=nbins) #density histogram 
+    Hx,yedges,xedges = np.histogram2d(y,x,bins=nbins,weights=vx) #sum of x-component of vector in each pixel
+    Hy,yedges,xedges = np.histogram2d(y,x,bins=nbins,weights=vy) #sum of y-component of vector in each pixel
+    vxm,vym = Hx/H,Hy/H #the means
+    #bin centres
+    xc = np.array([.5*(xedges[i]+xedges[i+1]) for i in np.arange(nbins)])
+    yc = np.array([.5*(yedges[i]+yedges[i+1]) for i in np.arange(nbins)])
+    #meshgrid to make arrays for streamplot
+    xx,yy = np.meshgrid(xc,yc)
+    if ax is None and colorlines is False:
+        plt.streamplot(xx,yy,vxm,vym,density=density,color=linecolor)
+        plt.xlim((xedges[0],xedges[-1]))
+        plt.ylim((yedges[0],yedges[-1]))
+    elif ax is None and colorlines is True:
+        plt.streamplot(xx,yy,vxm,vym,density=density,color=np.sqrt(vxm**2.+vym**2.),cmap=cmap)
+        plt.xlim((xedges[0],xedges[-1]))
+        plt.ylim((yedges[0],yedges[-1]))
+    elif ax is not None and colorlines is False:
+        ax.streamplot(xx,yy,vxm,vym,density=density,color=linecolor)
+        ax.set_xlim((xedges[0],xedges[-1]))
+        ax.set_ylim((yedges[0],yedges[-1]))
+    else:
+        ax.streamplot(xx,yy,vxm,vym,density=density,color=np.sqrt(vxm**2.+vym**2.),cmap=cmap)
+        ax.set_xlim((xedges[0],xedges[-1]))
+        ax.set_ylim((yedges[0],yedges[-1]))
+    return None
+
+
+
 
 
 
