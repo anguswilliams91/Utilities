@@ -225,7 +225,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                 # pdf = (H*(x_bin_sizes*y_bin_sizes))
                 # H = H[::-1]
                 # extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
-                confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],intervals=None,nbins=20,linecolor='0.5',filled=filled,cmap=cmap)
+                confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],nbins=nbins,intervals=None,linecolor='0.5',filled=filled,cmap=cmap)
                 # hist_2d_axes[(x_var,y_var)].imshow(H, extent=extent, \
                 #              aspect='auto', interpolation='nearest',cmap='hot_r')
                 # hist_2d_axes[(x_var,y_var)].contour(X,Y,pdf,3,colors='0.5',linewidth=0.25)
