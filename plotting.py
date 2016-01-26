@@ -311,7 +311,7 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
             ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
     return None  
 
-def scalarmap1D(x,s=None,nbins=10,f=lambda x: np.mean(x),ax=None,log=False):
+def scalarmap1D(x,s=None,nbins=10,ax=None,log=False):
     """same as above but for 1D case, if s is None then just does a density plot"""
     H,xedges = np.histogram(x,bins=nbins)
     if s is not None:
