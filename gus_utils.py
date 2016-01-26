@@ -206,9 +206,14 @@ def GelmanRubin(chain,burnin=None):
 def chain_results(chain,burnin=None):
     """Get the results from a chain using the 16th, 50th and 84th percentiles. 
     For each parameter a tuple is returned (best_fit, +err, -err)"""
+<<<<<<< HEAD
     if burnin:
         nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
         chain = chain[nwalkers*burnin:,:]
+=======
+    nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
+    chain = chain[nwalkers*burnin:,:]
+>>>>>>> b0f861bb79b7c254006feb5da0e11073a41bffd2
     return map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
                 zip(*np.percentile(chain[:,1:],[16,50,84],axis=0)))
 
