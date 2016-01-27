@@ -172,6 +172,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                 continue
     for var in xrange( n_traces - 1 ):
         hist_1d_axes[var].set_xticklabels([])
+        hist_1d_axes[var].xaxis.set_major_locator(MaxNLocator(4))
         hist_1d_axes[var].yaxis.set_visible(False)
 
     for y_var in xrange( 1, n_traces ):
