@@ -98,9 +98,11 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truevals = None, display = False, burnin=None, fontsize=20 ):
+def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truevals = None, burnin=None, fontsize=20 ):
 
-    """Plot a corner plot from an MCMC chain"""
+    """Plot a corner plot from an MCMC chain. the shape of the chain array should be (nwalkers*nsamples, ndim + 1). The extra column is for the walker ID 
+    number (i.e. if you have 20 walkers the id numbers are np.arange(20)). Note the walker ID's are never used, theyre only assumed to be there because 
+    of the way I write MCMC chains to file."""
 
     major_formatter = FuncFormatter(my_formatter)
     nwalkers = len(np.unique(chain[:,0]))
@@ -221,15 +223,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                 else:
                     H, y_edges, x_edges = np.histogram2d( traces[y_var][:num_samples], traces[x_var][:num_samples],\
                                                            bins = nbins )
-                # x_bin_sizes,y_bin_sizes = (x_edges[1:]-x_edges[:-1]).reshape((1,nbins)), (y_edges[1:]-y_edges[:-1])    
-                # X,Y = 0.5*(x_edges[1:]+x_edges[:-1]), 0.5*(y_edges[1:]+y_edges[:-1])
-                # pdf = (H*(x_bin_sizes*y_bin_sizes))
-                # H = H[::-1]
-                # extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
                 confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],nbins=nbins,intervals=None,linecolor='0.5',filled=filled,cmap=cmap)
-                # hist_2d_axes[(x_var,y_var)].imshow(H, extent=extent, \
-                #              aspect='auto', interpolation='nearest',cmap='hot_r')
-                # hist_2d_axes[(x_var,y_var)].contour(X,Y,pdf,3,colors='0.5',linewidth=0.25)
 
                 if truevals != None:
                     hist_2d_axes[(x_var,y_var)].plot( truevals[x_var], truevals[y_var], '+', color = '0.3', markersize = 30 )
@@ -269,8 +263,8 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
         if len(fname.split('.')) == 1:
             fname += '.eps'
         plt.savefig(fname, transparent=True, bbox_inches = "tight")
-    if display:
-        plt.show()
+
+    return None
 
 
 def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest'):
