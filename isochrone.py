@@ -107,7 +107,7 @@ class IsochroneModel():
         else:
             return np.array([r,theta,phi,vr,vtheta,vphi])
 
-    def xv2AA(self,xv,cartesian=False):
+    def xv2AA(self,xv,cartesian=False,JustActions=False):
         #go from positions and velocities to actions and angles
         if cartesian:
             x,y,z,vx,vy,vz = xv
@@ -121,38 +121,41 @@ class IsochroneModel():
         Jt = L - np.abs(Jp)
         Jr = self._GM/np.sqrt(-2.*E) - .5*(L+np.sqrt(L*L + 4.*self._GM*self._b))
 
-        #now get the angles
-        c = self._GM/(-2.*E) - self._b
-        e = np.sqrt(1. - (1.+self._b/c)*L*L/(self._GM*c))
-        s = 1.+ np.sqrt(1.+r*r/self._b**2.)
+        if not JustActions:
+            #now get the angles
+            c = self._GM/(-2.*E) - self._b
+            e = np.sqrt(1. - (1.+self._b/c)*L*L/(self._GM*c))
+            s = 1.+ np.sqrt(1.+r*r/self._b**2.)
 
-        num = r*vr / np.sqrt(-2.*E)
-        denom = self._b + c - np.sqrt(self._b*self._b + r*r)
-        eta = np.arctan2(num,denom)
-        eta %= (2.*np.pi)
-        Tr = eta - e*c*np.sin(eta) / (c + self._b)
+            num = r*vr / np.sqrt(-2.*E)
+            denom = self._b + c - np.sqrt(self._b*self._b + r*r)
+            eta = np.arctan2(num,denom)
+            eta %= (2.*np.pi)
+            Tr = eta - e*c*np.sin(eta) / (c + self._b)
 
 
-        psi = np.arctan2(np.cos(theta), -np.sin(theta)*r*vtheta/L)
-        if np.abs(vtheta)<1e-10: psi = np.pi/2.
+            psi = np.arctan2(np.cos(theta), -np.sin(theta)*r*vtheta/L)
+            if np.abs(vtheta)<1e-10: psi = np.pi/2.
 
-        Omratio = .5*(1.+L/np.sqrt(L**2.+self._GM*4.*self._b))
-        a1,a2 = np.sqrt((1.+e)/(1.-e)), np.sqrt((1.+e+2.*self._b/c)/(1.-e+2.*self._b/c))
-        Tt = psi + Omratio*Tr - self._lambfun(eta,a1) - self._lambfun(eta,a2)/np.sqrt(1.+4.*self._GM*self._b/L**2.)
+            Omratio = .5*(1.+L/np.sqrt(L**2.+self._GM*4.*self._b))
+            a1,a2 = np.sqrt((1.+e)/(1.-e)), np.sqrt((1.+e+2.*self._b/c)/(1.-e+2.*self._b/c))
+            Tt = psi + Omratio*Tr - self._lambfun(eta,a1) - self._lambfun(eta,a2)/np.sqrt(1.+4.*self._GM*self._b/L**2.)
 
-        inc = Jp/L
-        sinu = (inc/np.sqrt(1.-inc*inc)/np.tan(theta))
-        if sinu>1.:
-            u = np.pi/2.
-        if sinu<1.:
-            u = -np.pi/2.
+            inc = Jp/L
+            sinu = (inc/np.sqrt(1.-inc*inc)/np.tan(theta))
+            if sinu>1.:
+                u = np.pi/2.
+            if sinu<1.:
+                u = -np.pi/2.
+            else:
+                u = np.arcsin(sinu)
+            if vtheta>0.:
+                u = np.pi-u
+
+            Tp = phi - u + np.sign(Jp)*Tt
+            angs = np.array([Tr,Tt,Tp])
+            angs %= (2.*np.pi)
+
+            return np.append(np.array([Jr,Jt,Jp]),angs)
         else:
-            u = np.arcsin(sinu)
-        if vtheta>0.:
-            u = np.pi-u
-
-        Tp = phi - u + np.sign(Jp)*Tt
-        angs = np.array([Tr,Tt,Tp])
-        angs %= (2.*np.pi)
-
-        return np.append(np.array([Jr,Jt,Jp]),angs)
+            return np.array([Jr,Jt,Jp])
