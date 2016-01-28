@@ -98,7 +98,7 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truevals = None, burnin=None, fontsize=20 ):
+def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truevals = None, burnin=None, fontsize=20 , tickfontsize=15, nticks=4):
 
     """Plot a corner plot from an MCMC chain. the shape of the chain array should be (nwalkers*nsamples, ndim + 1). The extra column is for the walker ID 
     number (i.e. if you have 20 walkers the id numbers are np.arange(20)). Note the walker ID's are never used, theyre only assumed to be there because 
@@ -174,7 +174,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                 continue
     for var in xrange( n_traces - 1 ):
         hist_1d_axes[var].set_xticklabels([])
-        hist_1d_axes[var].xaxis.set_major_locator(MaxNLocator(4))
+        hist_1d_axes[var].xaxis.set_major_locator(MaxNLocator(nticks))
         hist_1d_axes[var].yaxis.set_visible(False)
 
     for y_var in xrange( 1, n_traces ):
@@ -208,8 +208,10 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color=cVal)
     hist_1d_axes[n_traces - 1].set_xlim( walls[0], walls[-1] )
     hist_1d_axes[n_traces - 1].set_xlabel(axis_labels[-1],fontsize=fontsize)
-    hist_1d_axes[n_traces - 1].xaxis.set_major_locator(MaxNLocator(4))
+    hist_1d_axes[n_traces - 1].tick_params(labelsize=tickfontsize)
+    hist_1d_axes[n_traces - 1].xaxis.set_major_locator(MaxNLocator(nticks))
     hist_1d_axes[n_traces - 1].yaxis.set_visible(False)
+    plt.setp(hist_1d_axes[n_traces - 1].xaxis.get_majorticklabels(), rotation=45)
 
 
     #Now Make the 2D histograms
@@ -223,7 +225,6 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                     H, y_edges, x_edges = np.histogram2d( traces[y_var][:num_samples], traces[x_var][:num_samples],\
                                                            bins = nbins )
                 confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],nbins=nbins,intervals=None,linecolor='0.5',filled=filled,cmap=cmap)
-
                 if truevals != None:
                     hist_2d_axes[(x_var,y_var)].plot( truevals[x_var], truevals[y_var], '+', color = '0.3', markersize = 30 )
                     hist_2d_axes[(x_var, y_var)].set_xlim( extent[0], extent[1] )
@@ -252,11 +253,13 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     #Finally Add the Axis Labels
     for x_var in xrange(n_traces - 1):
         hist_2d_axes[(x_var, n_traces-1)].set_xlabel(axis_labels[x_var],fontsize=fontsize)
-
-        hist_2d_axes[(x_var, n_traces-1)].xaxis.set_major_locator(MaxNLocator(4))
+        hist_2d_axes[(x_var, n_traces-1)].tick_params(labelsize=tickfontsize)
+        hist_2d_axes[(x_var, n_traces-1)].xaxis.set_major_locator(MaxNLocator(nticks))
+        plt.setp(hist_2d_axes[(x_var, n_traces-1)].xaxis.get_majorticklabels(), rotation=45)
     for y_var in xrange(1, n_traces ):
         hist_2d_axes[(0,y_var)].set_ylabel(axis_labels[y_var],fontsize=fontsize)
-        hist_2d_axes[(0,y_var)].yaxis.set_major_locator(MaxNLocator(4))
+        hist_2d_axes[(0,y_var)].tick_params(labelsize=tickfontsize)
+        hist_2d_axes[(0,y_var)].yaxis.set_major_locator(MaxNLocator(nticks))
 
     if fname != None:
         if len(fname.split('.')) == 1:
