@@ -199,11 +199,10 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     yplot[0] = yplot[1]
     yplot[-1] = yplot[-2]
 
-    levels = [0.,0.68,0.95]
     Cmap = colors.Colormap(cmap)
-    cNorm = colors.Normalize(vmin=0.,vmax=np.max(levels))
+    cNorm = colors.Normalize(vmin=0.,vmax=1.)
     scalarMap = cm.ScalarMappable(norm=cNorm,cmap=cmap)
-    cVal = scalarMap.to_rgba(levels[1])
+    cVal = scalarMap.to_rgba(0.65)
 
     hist_1d_axes[n_traces - 1].plot(xplot, yplot, color = 'k')
     hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color=cVal)
@@ -268,7 +267,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
 
 
 def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest'):
-    """Make a basic contour plot from scattered data, interp can be 'nearest','linear','bilinear','bicubic' etc."""
+    """Make a basic contour plot from scattered data, interp can be 'nearest','bilinear','bicubic' etc."""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
     if ax is None:
