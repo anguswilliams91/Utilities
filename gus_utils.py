@@ -33,7 +33,7 @@ def galactic2cartesian(s,b,l,Rsolar=8.5):
     """Return x,y,z given s,b,l"""
     return -s*np.cos(b)*np.cos(l) + Rsolar, -s*np.cos(b)*np.sin(l), s*np.sin(b)
 
-def helio2galactic(vLOS,l,b,vcirc=240.,vpec= [14.0,12.24,7.25]):
+def helio2galactic(vLOS,l,b,vcirc=240.,vpec= [11.1,12.24,7.25]):
     """Correct a heliocentric RV using the solar peculiar motion (n.b. l and b must be in radians)"""
     return vLOS + (vpec[0]*np.cos(l) + (vpec[1]+vcirc)*np.sin(l))*np.cos(b) + vpec[2]*np.sin(b)
 
