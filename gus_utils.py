@@ -176,6 +176,18 @@ def BHB_distance(g,r):
 
 """Stuff for emcee"""
 
+def write_to_file(sampler,outfile,p0,Nsteps=10):
+    """Quick thing for writing a chain to file"""
+    f = open(outfile,"a")
+    f.close()
+    for result in sampler.sample(p0,iterations=Nsteps,storechain=False):
+        position = result[0]
+        f = open(outfile,"a")
+        for k in range(position.shape[0]):
+            f.write("{0:4d} {1:s}\n".format(k, " ".join(map(str,position[k]))))
+        f.close()
+    return None
+
 def reshape_chain(chain):
     #take numpy array of shape (nwalkers*nsteps,ndim+1) and reshape to (nwalkers,nsteps,ndim)
     nwalkers = len(np.unique(chain[:,0]))
