@@ -269,7 +269,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     return None
 
 
-def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest'):
+def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',tickfontsize=15):
     """Make a basic contour plot from scattered data, interp can be 'nearest','bilinear','bicubic' etc."""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
@@ -282,6 +282,9 @@ def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r"
             plt.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         elif histunder:
             plt.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
+        plt.gca().set_aspect("auto")
+        plt.gca().tick_params(labelsize=tickfontsize)
+        plt.gca().set_aspect("auto")
     else:
         if not log: ax.contour(H,ncontours,extent=extent,colors=linecolor)
         else:
@@ -291,6 +294,9 @@ def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r"
             ax.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         elif histunder:
             ax.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+        ax.set_aspect("auto")
+        ax.tick_params(labelsize=tickfontsize)
+        ax.set_aspect("auto")
     return None
 
 def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',f = lambda x: np.mean(x)):
