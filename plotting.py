@@ -317,6 +317,7 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
             plt.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         else:
             plt.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
+        plt.gca().set_aspect("auto")
     else:
         if not logdens: ax.contour(H,ncontours,extent=extent,colors=linecolor)
         else:
@@ -326,6 +327,7 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
             ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         else:
             ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+        ax.set_aspect("auto")
     return None  
 
 def scalarmap1D(x,s=None,nbins=10,ax=None,log=False):
