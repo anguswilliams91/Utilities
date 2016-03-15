@@ -47,6 +47,16 @@ def propermotion_radec2lb(pm_ras,pm_dec,ra,dec):
     pmls,pmb = cosb**-1. * (C1*pm_ras+C2*pm_dec), cosb**-1. * (-C2*pm_ras + C1*pm_dec) #do the coord transformation
     return pmls,pmb
 
+def propermotion_lb2radec(pm_l,pm_b,ra,dec):
+    """Convert proper motions pm_ras = mu_ra*cos(dec) and pm_dec = mu_dec to pm_ls = mu_l*cos(b),pm_b=mu_b"""
+    raG,decG = np.radians(192.85948),np.radians(27.12825) #equatorial coords of the north galactic pole
+    ra,dec = np.radians(ra),np.radians(dec)
+    C1,C2 = np.sin(decG)*np.cos(dec) - np.cos(decG)*np.sin(dec)*np.cos(ra-raG),\
+                    np.cos(decG)*np.sin(ra-raG)
+    cosb = np.sqrt(C1**2.+C2**2.)
+    pm_ra,pm_dec = cosb**-1. * (C1*pm_l-C2*pm_b), cosb**-1. * (C2*pm_l + C1*pm_b) #do the coord transformation
+    return pm_ra,pm_dec
+
 def obs2cartesian(pm1,pm2,ra,dec,s,vhelio,radec_pms=False,Rsolar=8.5,Schoenrich=True):
     """Convert observed stuff to cartesian velocities (ra,dec must be in degrees, s in kpc and vhelio in kms-1)
     The coordinate transformations are according to the conventions found in Bond et al. (2010)"""
@@ -135,7 +145,8 @@ def cartesian2observable(x,y,z,vx,vy,vz,Rsolar=8.5,Schoenrich=True):
     return pml,pmb,ra,dec,s,vLOS
 
 def correct_abundance(abun,feh,elemstr):
-    """Correct an abundance to relative to solar, from a log epsilon measurement, using asplund 2009"""
+    """Correct an abundance to relative to solar, from a log epsilon measurement, using asplund 2009
+        returns [Elem / Fe]"""
     if elemstr in elements:
         solarabun = np.float(solarabundances[np.where(elements==elemstr)])
         return abun - feh - solarabun
@@ -163,9 +174,11 @@ def sag2radec(lambdat,Bt,indegrees=False):
 
 def angular_radius_selection(ra,dec,pos,radius):
     """Grab everything within a specific angular radius on the sky [ra0,dec0] is the centre of the 
-    circle and radius is the angular radius of the region in degrees"""
+    circle and radius is the angular radius of the region in degrees. Assumes everything is given in 
+    degrees."""
     ra0,dec0 = pos
-    idx = np.sin(dec0)*np.sin(dec) + np.cos(dec0)*np.cos(dec)*np.cos(ra0-ra) > np.cos(np.pi*radius/180.)
+    ra0,dec0 = np.radians(ra0),np.radians(dec0)
+    idx = np.sin(dec0)*np.sin(np.radians(dec)) + np.cos(dec0)*np.cos(np.radians(dec))*np.cos(ra0-np.radians(ra)) > np.cos(np.pi*radius/180.)
     return ra[idx],dec[idx],idx
 
 def BHB_distance(g,r):

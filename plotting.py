@@ -98,7 +98,7 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truevals = None, burnin=None, fontsize=20 , tickfontsize=15, nticks=4):
+def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truths = None, burnin=None, fontsize=20 , tickfontsize=15, nticks=4):
 
     """Plot a corner plot from an MCMC chain. the shape of the chain array should be (nwalkers*nsamples, ndim + 1). The extra column is for the walker ID 
     number (i.e. if you have 20 walkers the id numbers are np.arange(20)). Note the walker ID's are never used, theyre only assumed to be there because 
@@ -124,7 +124,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
         print >> stderr, "ERROR: There must be the same number of axis labels as traces"
         return
 
-    if truevals != None and ( len(truevals) != len(traces) ):
+    if truths != None and ( len(truths) != len(traces) ):
         print >> stderr, "ERROR: There must be the same number of true values as traces"
 
     num_samples = min([ len(trace) for trace in traces])
@@ -212,6 +212,8 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     hist_1d_axes[n_traces - 1].xaxis.set_major_locator(MaxNLocator(nticks))
     hist_1d_axes[n_traces - 1].yaxis.set_visible(False)
     plt.setp(hist_1d_axes[n_traces - 1].xaxis.get_majorticklabels(), rotation=45)
+    if truths is not None:
+        hist_1d_axes[n_traces - 1].axvline(truths[n_traces - 1],ls='--',c='k')
 
 
     #Now Make the 2D histograms
@@ -225,10 +227,12 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                     H, y_edges, x_edges = np.histogram2d( traces[y_var][:num_samples], traces[x_var][:num_samples],\
                                                            bins = nbins )
                 confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],nbins=nbins,intervals=None,linecolor='0.5',filled=filled,cmap=cmap)
-                if truevals != None:
-                    hist_2d_axes[(x_var,y_var)].plot( truevals[x_var], truevals[y_var], '+', color = '0.3', markersize = 30 )
-                    hist_2d_axes[(x_var, y_var)].set_xlim( extent[0], extent[1] )
-                    hist_2d_axes[(x_var, y_var)].set_ylim( extent[2], extent[3] )
+                if truths is not None:
+                    xlo,xhi = hist_2d_axes[(x_var,y_var)].get_xlim()
+                    ylo,yhi = hist_2d_axes[(x_var,y_var)].get_ylim()
+                    hist_2d_axes[(x_var,y_var)].plot( truths[x_var], truths[y_var], '*', color = 'k', markersize = 10 )
+                    hist_2d_axes[(x_var,y_var)].set_xlim((xlo,xhi))
+                    hist_2d_axes[(x_var,y_var)].set_ylim((ylo,yhi))
             except KeyError:
                 pass
         if x_var < n_traces - 1:
@@ -247,8 +251,10 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
 
             hist_1d_axes[x_var].plot(xplot, yplot, color = 'k' )
             hist_1d_axes[x_var].fill_between(xplot,yplot,color=cVal)
-
             hist_1d_axes[x_var].set_xlim( x_edges[0], x_edges[-1] )
+            if truths is not None:
+                hist_1d_axes[x_var].axvline(truths[x_var],ls='--',c='k')
+                hist_1d_axes[x_var].set_xlim( x_edges[0], x_edges[-1] )
 
     #Finally Add the Axis Labels
     for x_var in xrange(n_traces - 1):
@@ -299,14 +305,20 @@ def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r"
         ax.set_aspect("auto")
     return None
 
-def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',f = lambda x: np.mean(x)):
+def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',dispersion=False):
     """Plot a map of the scalar function s as a function of x and y, given irregular data. Overplot contours of x and y. The mean of 
     s in each bin is plotted"""
     if logscalar is True and any(s<0.) is True:
         print "Can't log scale a quantity that isn't positive definite!"
         return None 
     H,yedges,xedges = np.histogram2d(y,x,bins=nbins) #histogram the data
-    H_s,yedges,xedges = np.histogram2d(y,x,weights=s,bins=nbins) #histogram with the scalar as the weight so that H_s/H is the mean of s in each bin
+    if not dispersion:
+        H_s,yedges,xedges = np.histogram2d(y,x,weights=s,bins=nbins) #histogram with the scalar as the weight so that H_s/H is the mean of s in each bin
+        H_s/=H
+    else:
+        H_m,yedges,xedges = np.histogram2d(y,x,weights=s,bins=nbins) #histogram with the scalar as the weight so that H_s/H is the mean of s in each bin
+        H_m2,yedges,xedges = np.histogram2d(y,x,weights=s*s,bins=nbins) #histogram with the scalar as the weight so that H_s/H is the mean of the square s in each bin
+        H_s = np.sqrt(H_m2/H - (H_m/H)**2.) #the dispersion in each pixel
     extent = [xedges[0],xedges[-1],yedges[0],yedges[-1]]
     if ax is None:
         if not logdens: plt.contour(H,ncontours,extent=extent,colors=linecolor)
@@ -314,9 +326,9 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
             levels = np.logspace(.2*np.max(np.log(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
             plt.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
         if not logscalar:
-            plt.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+            plt.imshow(H_s,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         else:
-            plt.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
+            plt.imshow(H_s,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
         plt.gca().set_aspect("auto")
     else:
         if not logdens: ax.contour(H,ncontours,extent=extent,colors=linecolor)
@@ -324,18 +336,21 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
             levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
             ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
         if not logscalar:
-            ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+            ax.imshow(H_s,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
         else:
-            ax.imshow(H_s/H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+            ax.imshow(H_s,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
         ax.set_aspect("auto")
-    return None  
+    return xedges,yedges,H,H_s 
 
-def scalarmap1D(x,s=None,nbins=10,ax=None,log=False):
+def scalarmap1D(x,s=None,nbins=10,ax=None,log=False,errors=True):
     """same as above but for 1D case, if s is None then just does a density plot"""
     H,xedges = np.histogram(x,bins=nbins)
     if s is not None:
-        H_s,xedges = np.histogram(x,weight=s,bins=nbins)
+        H_s,xedges = np.histogram(x,weights=s,bins=nbins)
         fs = H_s/H
+        if errors:
+            H_d = np.histogram(x,weights=s*s,bins=nbins)
+            disp = np.sqrt(H_d/H - (H_s/H)**2.) / np.sqrt(H)
     else:
         fs = H
     xc = np.array([np.mean([xedges[i],xedges[i+1]]) for i in np.arange(nbins)])
