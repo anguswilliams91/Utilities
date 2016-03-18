@@ -1,6 +1,7 @@
 import numpy as np 
 import astropy.units as u 
 from astropy.coordinates import SkyCoord
+import acor
 
 abundancefile = "/home/aamw3/Dropbox/PhD_dd/python_utils/asplund_abundances.txt"
 elements = np.genfromtxt(abundancefile,usecols=0,dtype=str)
@@ -187,7 +188,7 @@ def BHB_distance(g,r):
     mu = g-G
     return (10.**(1.+.2*mu))/1000. #distance in kpc
 
-"""Stuff for emcee"""
+"""Stuff for MCMC output"""
 
 def write_to_file(sampler,outfile,p0,Nsteps=10):
     """Quick thing for writing a chain to file"""
@@ -220,15 +221,32 @@ def GelmanRubin(chain,burnin=None):
     if burnin is not None:
         c=c[:,burnin:,:]
     nwalkers,nsteps,ndim = np.shape(c)
+    nwalkers,nsteps = np.float(nwalkers),np.float(nsteps)
     gr = np.zeros(ndim)
     for j in np.arange(ndim):
-        a = np.mean(np.var(c[:,:,j],axis=1))
-        b = np.var(np.mean(c[:,:,j],axis=1))
-        va = (1.-np.float(nsteps)**-1.)*a + (1./np.float(nsteps))*b
-        gr[j]=np.sqrt(va/a)
+        means = np.mean(c[:,:,j],axis=1)
+        variances = np.var(c[:,:,j],axis=1)
+        meanofmeans = np.mean(means)
+        between = (nsteps/(nwalkers-1.))*np.sum((means-meanofmeans)**2.)
+        within =  (1./nwalkers)*np.sum(variances)
+        Vhat = ((nsteps-1.)/nsteps)*within + ((nwalkers+1.)/(nsteps*nwalkers))*between
+        gr[j] = np.sqrt(Vhat/within)
     return gr
 
-def chain_results(chain,burnin=None):
+def AutoCorrelation(chain,burnin=None):
+    """Calculate the autocorrelation time for a chain"""
+    c = reshape_chain(chain)
+    if burnin is not None:
+        c=c[:,burnin:,:]
+    nwalkers,nsteps,ndim = np.shape(c)
+    tau = np.zeros((nwalkers,ndim))
+    for i in np.arange(nwalkers):
+        for j in np.arange(ndim):
+            tau[i,j],mean,sigma = acor.acor(c[i,:,j]) #here we compute the autocorrelation time
+    return np.mean(tau,axis=0)
+
+
+def ChainResults(chain,burnin=None):
     """Get the results from a chain using the 16th, 50th and 84th percentiles. 
     For each parameter a tuple is returned (best_fit, +err, -err)"""
     if burnin:

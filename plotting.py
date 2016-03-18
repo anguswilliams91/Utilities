@@ -13,6 +13,7 @@ import matplotlib.cm as cm
 import matplotlib.colorbar as cbar
 import pylab
 import matplotlib.colors as colors
+import gus_utils as gu
 
 
 def scatter_contour(x, y,
@@ -272,6 +273,38 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
             fname += '.eps'
         plt.savefig(fname, transparent=True, bbox_inches = "tight")
 
+    return None
+
+def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,labelsize=20):
+    """Plot the traces of all the walkers in a given run"""
+    c = gu.reshape_chain(chain)
+    if burnin is not None:
+        c=c[:,burnin:,:]
+    nwalkers,nsteps,ndim = np.shape(c)
+    if axis_labels is not None and len(axis_labels)!=ndim:
+        print "You've messed up the number of axis labels"
+        return None
+    fig = plt.figure( num = None, figsize = (ndim,9.*ndim))
+    gs = gridspec.GridSpec(ndim,1)
+    gs.update(wspace=0.,hspace=0.)
+    for i in np.arange(ndim):
+        ax = fig.add_subplot(gs[i,0])
+        ax.tick_params(labelsize=tickfontsize)
+        ax.yaxis.set_major_locator(MaxNLocator(nticks))
+        plt.setp(ax.yaxis.get_majorticklabels(), rotation=45)
+        if i!=ndim-1:
+            ax.xaxis.set_visible(False)
+            ticks = ax.yaxis.get_major_ticks()
+            ticks[-1].set_visible(False)
+            ticks[0].set_visible(False)
+        if i==ndim-1:
+            ticks = ax.yaxis.get_major_ticks()
+            ticks[-1].set_visible(False)
+            ax.set_xlabel("$N_\\mathrm{steps}$",fontsize=labelsize)
+        [ax.plot(c[j,:,i],c='0.5',alpha=0.3) for j in np.arange(nwalkers)]
+        ax.set_xlim((0,nsteps))
+        if axis_labels is not None:
+            ax.set_ylabel(axis_labels[i],fontsize=labelsize)
     return None
 
 
