@@ -99,7 +99,8 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truths = None, burnin=None, fontsize=20 , tickfontsize=15, nticks=4):
+def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truths = None,\
+                         burnin=None, fontsize=20 , tickfontsize=15, nticks=4, linewidth=1.):
 
     """Plot a corner plot from an MCMC chain. the shape of the chain array should be (nwalkers*nsamples, ndim + 1). The extra column is for the walker ID 
     number (i.e. if you have 20 walkers the id numbers are np.arange(20)). Note the walker ID's are never used, theyre only assumed to be there because 
@@ -205,8 +206,8 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     scalarMap = cm.ScalarMappable(norm=cNorm,cmap=cmap)
     cVal = scalarMap.to_rgba(0.65)
 
-    hist_1d_axes[n_traces - 1].plot(xplot, yplot, color = 'k')
-    hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color=cVal)
+    hist_1d_axes[n_traces - 1].plot(xplot, yplot, color = 'k', lw=linewidth)
+    if filled: hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color=cVal)
     hist_1d_axes[n_traces - 1].set_xlim( walls[0], walls[-1] )
     hist_1d_axes[n_traces - 1].set_xlabel(axis_labels[-1],fontsize=fontsize)
     hist_1d_axes[n_traces - 1].tick_params(labelsize=tickfontsize)
@@ -227,7 +228,8 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                 else:
                     H, y_edges, x_edges = np.histogram2d( traces[y_var][:num_samples], traces[x_var][:num_samples],\
                                                            bins = nbins )
-                confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],nbins=nbins,intervals=None,linecolor='0.5',filled=filled,cmap=cmap)
+                confidence_2d(traces[x_var][:num_samples],traces[y_var][:num_samples],ax=hist_2d_axes[(x_var,y_var)],\
+                    nbins=nbins,intervals=None,linecolor='0.5',filled=filled,cmap=cmap,linewidth=linewidth)
                 if truths is not None:
                     xlo,xhi = hist_2d_axes[(x_var,y_var)].get_xlim()
                     ylo,yhi = hist_2d_axes[(x_var,y_var)].get_ylim()
@@ -250,8 +252,8 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
             yplot[0] = yplot[1]
             yplot[-1] = yplot[-2]
 
-            hist_1d_axes[x_var].plot(xplot, yplot, color = 'k' )
-            hist_1d_axes[x_var].fill_between(xplot,yplot,color=cVal)
+            hist_1d_axes[x_var].plot(xplot, yplot, color = 'k' , lw=linewidth)
+            if filled: hist_1d_axes[x_var].fill_between(xplot,yplot,color=cVal)
             hist_1d_axes[x_var].set_xlim( x_edges[0], x_edges[-1] )
             if truths is not None:
                 hist_1d_axes[x_var].axvline(truths[x_var],ls='--',c='k')
@@ -275,7 +277,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
 
     return None
 
-def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,labelsize=20):
+def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,labelsize=20,truths=None):
     """Plot the traces of all the walkers in a given run"""
     c = gu.reshape_chain(chain)
     if burnin is not None:
@@ -302,6 +304,8 @@ def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,label
             ticks[-1].set_visible(False)
             ax.set_xlabel("$N_\\mathrm{steps}$",fontsize=labelsize)
         [ax.plot(c[j,:,i],c='0.5',alpha=0.3) for j in np.arange(nwalkers)]
+        if truths is not None:
+            ax.axhline(truths[i],ls='--',c='k')
         ax.set_xlim((0,nsteps))
         if axis_labels is not None:
             ax.set_ylabel(axis_labels[i],fontsize=labelsize)
@@ -375,26 +379,32 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="ho
         ax.set_aspect("auto")
     return xedges,yedges,H,H_s 
 
-def scalarmap1D(x,s=None,nbins=10,ax=None,log=False,errors=True):
+def scalarmap1D(x,s=None,nbins=10,ax=None,log=False,errors=True,linecolor='k'):
     """same as above but for 1D case, if s is None then just does a density plot"""
     H,xedges = np.histogram(x,bins=nbins)
     if s is not None:
         H_s,xedges = np.histogram(x,weights=s,bins=nbins)
         fs = H_s/H
         if errors:
-            H_d = np.histogram(x,weights=s*s,bins=nbins)
-            disp = np.sqrt(H_d/H - (H_s/H)**2.) / np.sqrt(H)
+            disp = np.array([np.std(s[(x<xedges[i+1])*(x>=xedges[i])])/np.sqrt(np.float(H[i])) for i in np.arange(nbins-1)])
+            i = nbins -1
+            disp = np.append(disp,np.std(s[(x<=xedges[i+1])*(x>=xedges[i])])/np.sqrt(np.float(H[i])))
+            print disp
     else:
         fs = H
     xc = np.array([np.mean([xedges[i],xedges[i+1]]) for i in np.arange(nbins)])
     if ax is None and log:
-        plt.loglog(xc,fs)
-    elif ax is None and not log:
-        plt.plot(xc,fs)
+        plt.loglog(xc,fs,c=linecolor)
+    elif ax is None and not log and not errors:
+        plt.plot(xc,fs,c=linecolor)
     elif ax is not None and log:
-        ax.loglog(xc,fs)
+        ax.loglog(xc,fs,c=linecolor)
+    elif errors and ax is None:
+        plt.errorbar(xc,fs,yerr=disp,c=linecolor)
+    elif errors and ax is not None:
+        ax.errorbar(xc,fs,yerr=disp,c=linecolor)
     else:
-        ax.plot(xc,fs)
+        ax.plot(xc,fs,c=linecolor)
     return None
 
 def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="hot_r",colorlines=False,density=1.,linecolor='k'):
@@ -428,7 +438,7 @@ def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="hot_r",colorlines=False,density=1
     return None
 
 
-def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k',histunder=False,cmap="hot_r",filled=False):
+def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k',histunder=False,cmap="hot_r",filled=False,linewidth=1.):
     """Draw confidence intervals at the levels asked from a 2d sample of points (e.g. 
         output of MCMC)"""
     if intervals is None:
@@ -456,20 +466,20 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
     if ax is None:
         if histunder:
             plt.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
-            plt.contour(xx,yy,H,levels=v,colors=linecolor,extend='max')
+            plt.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
         elif filled:
             plt.contourf(xx,yy,H,levels=v[::-1],cmap=cmap)
         else:
-            plt.contour(xx,yy,H,levels=v,colors=linecolor)
+            plt.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)
     else:
         if histunder:
             ax.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
-            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max')
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
         elif filled:
             ax.contourf(xx,yy,H,levels=v[::-1],cmap=cmap)
-            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max')
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
         else:
-            ax.contour(xx,yy,H,levels=v,colors=linecolor)        
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)        
 
     return None
 
