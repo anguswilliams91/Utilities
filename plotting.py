@@ -47,7 +47,7 @@ def my_formatter(x, pos):
     """Format 1 as 1, 0 as 0, and all values whose absolute values is between
     0 and 1 without the leading "0." (e.g., 0.7 is formatted as .7 and -0.4 is
     formatted as -.4)."""
-    val_str = '{:g}'.format(x)
+    val_str = '${:g}$'.format(x)
     if np.abs(x) > 0 and np.abs(x) < 1:
         return val_str.replace("0", "", 1)
     else:
@@ -222,6 +222,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     for y_var in xrange(1, n_traces ):
         hist_2d_axes[(0,y_var)].set_ylabel(axis_labels[y_var],fontsize=fontsize)
         hist_2d_axes[(0,y_var)].tick_params(labelsize=tickfontsize)
+        plt.setp(hist_2d_axes[(0,y_var)].yaxis.get_majorticklabels(), rotation=45)
         hist_2d_axes[(0,y_var)].yaxis.set_major_locator(MaxNLocator(nticks))
 
     if fname != None:
