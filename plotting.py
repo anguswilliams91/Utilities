@@ -227,7 +227,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
 
     if fname != None:
         if len(fname.split('.')) == 1:
-            fname += '.eps'
+            fname += '.pdf'
         plt.savefig(fname, transparent=True, bbox_inches = "tight")
 
     return None
