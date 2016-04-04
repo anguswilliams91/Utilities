@@ -3,7 +3,7 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from scipy.stats import kde
+from scipy.stats import gaussian_kde
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import NullFormatter, MaxNLocator, FuncFormatter
 from matplotlib.colors import LogNorm
@@ -16,78 +16,32 @@ import matplotlib.colors as colors
 import gus_utils as gu
 
 
-def scatter_contour(x, y,
-                levels=10,
-                    threshold=100,
-                            log_counts=False,
-                                        ax=None,
-                                            kdebins = 20):
-
-    """Contour plots with underlying 2d histograms and scatter points below a certain threshold"""
-
-    x = np.asarray(x)
-    y = np.asarray(y)
-    default_contour_args = dict(zorder=0)
-    default_plot_args = dict(marker='.', linestyle='none', zorder=1)
-
-    if ax is None:
-        # Import here so that testing with Agg will work
-        from matplotlib import pyplot as plt
-        ax = plt.gca()
-
-    H, xbins, ybins = np.histogram2d(x, y)
-    
-    if log_counts:
-        H = np.log10(1 + H)
-        threshold = np.log10(1 + threshold)
-
-    levels = np.asarray(levels)
-
-    if levels.size == 1:
-        levels = np.linspace(threshold, H.max(), levels)
-
-    extent = [xbins[0], xbins[-1], ybins[0], ybins[-1]]
-
-    i_min = np.argmin(levels)
-    
-
-    X = np.hstack([x[:, None], y[:, None]])
-
-    outline = ax.contour(H.T, levels[i_min:i_min + 1],
-                                    linewidths=0, extent=extent,
-                                                        alpha=0)
-
-    if len(outline.allsegs[0]) > 0:
-        outer_poly = outline.allsegs[0][0]
-        try:
-            # this works in newer matplotlib versions
-            from matplotlib.path import Path
-            points_inside = Path(outer_poly).contains_points(X)
-        except:
-            # this works in older matplotlib versions
-            import matplotlib.nxutils as nx
-            points_inside = nx.points_inside_poly(X, outer_poly)
-
-        Xplot = X[~points_inside]
-        Yplot = X[points_inside]
+def kde_smooth(x,y,ax=None,xlims=None,ylims=None,linecolor='k',ninterp=200,linewidth=2.,ncontours=10,fill=None,cmap="Blues"):
+    """Smooth density estimator of scattered data to make better contour plots n.b. this is 
+    going to be slow so only use it if you have sparse data"""
+    vals = np.vstack((x.ravel(),y.ravel())) #can pass arrays of any shape
+    kernel = gaussian_kde(vals) #make the kde
+    if xlims is None:
+        xmin,xmax = np.min(x),np.max(x)
+        ymin,ymax = np.min(y),np.max(y)
     else:
-        Xplot = X
+        xmin,xmax = xlims
+        ymin,ymax = ylims
+    X,Y = np.mgrid[xmin:xmax:complex(0,ninterp),ymin:ymax:complex(0,ninterp)] #grid of points for interpolation
+    pos = np.vstack((X.ravel(),Y.ravel())) #shape required by kernel
+    Z = np.reshape(kernel(pos).T,X.shape) #interpolated values
+    if ax is None:
+        if fill:
+            plt.contourf(X,Y,Z,ncontours,cmap=cmap)
+            plt.colorbar()
+        plt.contour(X,Y,Z,ncontours,colors=linecolor,linewidths=linewidth)
+    else:
+        if fill:
+            ax.contourf(X,Y,Z,ncontours,cmap=cmap)
+            plt.colorbar()
+        ax.contour(X,Y,Z,ncontours,colors=linecolor,linewidths=linewidth)
+    return None        
 
-
-    xkde = np.ravel(Yplot[:,0])
-    ykde = np.ravel(Yplot[:,1])
-    k = kde.gaussian_kde(np.vstack((xkde,ykde)))
-    xi,yi = np.mgrid[xkde.min():xkde.max():kdebins*1j, ykde.min():ykde.max():kdebins*1j]
-    zi = k(np.vstack([xi.flatten(),yi.flatten()]))
-    contours = ax.contour(xi,yi,zi.reshape(xi.shape),extent=extent,colors='0.3')
-    ax.hist2d(x,y,alpha=0.6,bins=10,cmin=threshold,cmap = 'hot_r' )
-
-    points = ax.scatter(Xplot[:, 0], Xplot[:, 1],c='k',alpha=0.2,edgecolors='none')
-    plt.xlim((np.min(Xplot[:,0]),np.max(Xplot[:,0])))
-    plt.ylim((np.min(Xplot[:,1]),np.max(Xplot[:,1])))
-    plt.tight_layout
-
-    return points, contours
 
 def my_formatter(x, pos):
     """Format 1 as 1, 0 as 0, and all values whose absolute values is between
@@ -99,7 +53,7 @@ def my_formatter(x, pos):
     else:
         return val_str
 
-def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Greens", norm = None, truths = None,\
+def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Blues", norm = None, truths = None,\
                          burnin=None, fontsize=20 , tickfontsize=15, nticks=4, linewidth=1.):
 
     """Plot a corner plot from an MCMC chain. the shape of the chain array should be (nwalkers*nsamples, ndim + 1). The extra column is for the walker ID 
