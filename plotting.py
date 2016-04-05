@@ -160,6 +160,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     scalarMap = cm.ScalarMappable(norm=cNorm,cmap=cmap)
     cVal = scalarMap.to_rgba(0.65)
 
+    #this one's special, so do it on it's own
     hist_1d_axes[n_traces - 1].plot(xplot, yplot, color = 'k', lw=linewidth)
     if filled: hist_1d_axes[n_traces - 1].fill_between(xplot,yplot,color=cVal)
     hist_1d_axes[n_traces - 1].set_xlim( walls[0], walls[-1] )
@@ -169,6 +170,13 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     hist_1d_axes[n_traces - 1].yaxis.set_visible(False)
     plt.setp(hist_1d_axes[n_traces - 1].xaxis.get_majorticklabels(), rotation=45)
     if truths is not None:
+        xlo,xhi = hist_1d_axes[n_traces-1].get_xlim()
+        if truths[n_traces-1]<xlo:
+            dx = xlo-truths[n_traces-1]
+            hist_1d_axes[n_traces-1].set_xlim((xlo-dx-0.05*(xhi-xlo),xhi))
+        elif truths[n_traces-1]>xhi:
+            dx = truths[n_traces-1]-xhi
+            hist_1d_axes[n_traces-1].set_xlim((xlo,xhi+dx+0.05*(xhi-xlo)))
         hist_1d_axes[n_traces - 1].axvline(truths[n_traces - 1],ls='--',c='k')
 
 
@@ -187,9 +195,20 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
                 if truths is not None:
                     xlo,xhi = hist_2d_axes[(x_var,y_var)].get_xlim()
                     ylo,yhi = hist_2d_axes[(x_var,y_var)].get_ylim()
+                    if truths[x_var]<xlo:
+                        dx = xlo-truths[x_var]
+                        hist_2d_axes[(x_var,y_var)].set_xlim((xlo-dx-0.05*(xhi-xlo),xhi))
+                    elif truths[x_var]>xhi:
+                        dx = truths[x_var]-xhi
+                        hist_2d_axes[(x_var,y_var)].set_xlim((xlo,xhi+dx+0.05*(xhi-xlo)))
+                    if truths[y_var]<ylo:
+                        dy = ylo - truths[y_var]
+                        hist_2d_axes[(x_var,y_var)].set_ylim((ylo-dy-0.05*(yhi-ylo),yhi))
+                    elif truths[y_var]<ylo:
+                        dy = truths[y_var] - yhi
+                        hist_2d_axes[(x_var,y_var)].set_ylim((ylo,yhi+dy+0.05*(yhi-ylo)))
+                    #TODO: deal with the pesky case of a prior edge
                     hist_2d_axes[(x_var,y_var)].plot( truths[x_var], truths[y_var], '*', color = 'k', markersize = 10 )
-                    hist_2d_axes[(x_var,y_var)].set_xlim((xlo,xhi))
-                    hist_2d_axes[(x_var,y_var)].set_ylim((ylo,yhi))
             except KeyError:
                 pass
         if x_var < n_traces - 1:
@@ -210,8 +229,14 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
             if filled: hist_1d_axes[x_var].fill_between(xplot,yplot,color=cVal)
             hist_1d_axes[x_var].set_xlim( x_edges[0], x_edges[-1] )
             if truths is not None:
+                xlo,xhi = hist_1d_axes[x_var].get_xlim()
+                if truths[x_var]<xlo:
+                    dx = xlo-truths[x_var]
+                    hist_1d_axes[x_var].set_xlim((xlo-dx-0.05*(xhi-xlo),xhi))
+                elif truths[x_var]>xhi:
+                    dx = truths[x_var]-xhi
+                    hist_1d_axes[x_var].set_xlim((xlo,xhi+dx+0.05*(xhi-xlo)))
                 hist_1d_axes[x_var].axvline(truths[x_var],ls='--',c='k')
-                hist_1d_axes[x_var].set_xlim( x_edges[0], x_edges[-1] )
 
     #Finally Add the Axis Labels
     for x_var in xrange(n_traces - 1):
