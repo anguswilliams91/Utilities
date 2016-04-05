@@ -2,8 +2,9 @@ import numpy as np
 import astropy.units as u 
 from astropy.coordinates import SkyCoord
 import acor
+import os
 
-abundancefile = "/home/aamw3/Dropbox/PhD_dd/python_utils/asplund_abundances.txt"
+abundancefile = os.path.expanduser("~")+"/Dropbox/PhD_dd/python_utils/asplund_abundances.txt"
 elements = np.genfromtxt(abundancefile,usecols=0,dtype=str)
 solarabundances = np.genfromtxt(abundancefile,usecols=1,dtype=np.float64)
 
@@ -252,8 +253,6 @@ def ChainResults(chain,burnin=None):
     if burnin:
         nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
         chain = chain[nwalkers*burnin:,:]
-    nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
-    chain = chain[nwalkers*burnin:,:]
     return map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
                 zip(*np.percentile(chain[:,1:],[16,50,84],axis=0)))
 
