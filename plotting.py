@@ -54,7 +54,7 @@ def my_formatter(x, pos):
         return val_str
 
 def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True, cmap="Blues", norm = None, truths = None,\
-                         burnin=None, fontsize=20 , tickfontsize=15, nticks=4, linewidth=1.):
+                         burnin=None, fontsize=20 , tickfontsize=15, nticks=4, linewidth=1.,wspace=0.5,hspace=0.5):
 
     """Plot a corner plot from an MCMC chain. the shape of the chain array should be (nwalkers*nsamples, ndim + 1). The extra column is for the walker ID 
     number (i.e. if you have 20 walkers the id numbers are np.arange(20)). Note the walker ID's are never used, theyre only assumed to be there because 
@@ -93,7 +93,7 @@ def triangle_plot( chain, axis_labels=None, fname = None, nbins=40, filled=True,
     dim = 2*n_traces - 1
 
     gs = gridspec.GridSpec(dim+1,dim+1)
-    gs.update(wspace=0.5,hspace=0.5)
+    gs.update(wspace=wspace,hspace=hspace)
 
     hist_2d_axes = {}
 
