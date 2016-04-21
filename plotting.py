@@ -463,3 +463,60 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
 
     return None
 
+def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="Blues",alpha=1.,fill=True):
+    """Given an MCMC output paramsamples.shape = (nparams,N) a 1D function func(x,params) that 
+        depends on params and a given range x, use the samples to create a plot with confidence 
+        intervals on the derived parameters. func should be vectorized."""
+    cm = plt.cm.get_cmap(cmap) #get the cmap
+    if burnin is not None:
+        paramsamples = paramsamples[:,burnin:]
+    nparams,N = np.shape(paramsamples)
+    funsamples = np.zeros((len(x),N))
+    #compute the MCMC samples of the function at each position
+    for i in np.arange(len(x)):
+        funsamples[i] = func(x[i],paramsamples)
+    #now compute the confidence intervals of the function at each position
+    confs = np.zeros((len(x),5))
+    for i in np.arange(len(x)):
+        confs[i,0] = np.percentile(funsamples[i],3)
+        confs[i,1] = np.percentile(funsamples[i],16)
+        confs[i,2] = np.percentile(funsamples[i],50)
+        confs[i,3] = np.percentile(funsamples[i],84)
+        confs[i,4] = np.percentile(funsamples[i],97)
+    #now plot 
+    if ax is not None and fill is True:
+        ax.plot(x,confs[:,2],c=cm(1.))
+        ax.fill_between(x,confs[:,1],confs[:,3],facecolor=cm(0.25),lw=0,alpha=alpha)
+        ax.fill_between(x,confs[:,3],confs[:,4],facecolor=cm(0.75),lw=0,alpha=alpha)
+        ax.fill_between(x,confs[:,0],confs[:,1],facecolor=cm(0.75),lw=0,alpha=alpha)
+        ax.set_xlim((np.min(x),np.max(x)))
+        if axis_labels is not None:
+            ax.set_xlabel(axis_labels[0])
+            ax.set_ylabel(axis_labels[1])
+    elif ax is None and fill is True:
+        plt.plot(x,confs[:,2],c=cm(1.))
+        plt.fill_between(x,confs[:,1],confs[:,3],facecolor=cm(0.7),lw=0,alpha=alpha)
+        plt.fill_between(x,confs[:,3],confs[:,4],facecolor=cm(0.3),lw=0,alpha=alpha)
+        plt.fill_between(x,confs[:,0],confs[:,1],facecolor=cm(0.3),lw=0,alpha=alpha)
+        plt.xlim((np.min(x),np.max(x)))
+        if axis_labels is not None:
+            plt.xlabel(axis_labels[0])
+            plt.ylabel(axis_labels[1])
+    elif ax is not None and fill is False:
+        #only plot the 1 sigma lines if no fill, otherwise it looks too messy
+        ax.plot(x,confs[:,1],c=cm(.5))
+        ax.plot(x,confs[:,2],c=cm(.5))
+        ax.plot(x,confs[:,3],c=cm(.5))
+        ax.set_xlim((np.min(x),np.max(x)))
+        if axis_labels is not None:
+            plt.xlabel(axis_labels[0])
+            plt.ylabel(axis_labels[1])
+    else:
+        plt.plot(x,confs[:,1],c=cm(.5))
+        plt.plot(x,confs[:,2],c=cm(.5))
+        plt.plot(x,confs[:,3],c=cm(.5))   
+        plt.xlim((np.min(x),np.max(x)))
+        if axis_labels is not None:
+            plt.xlabel(axis_labels[0])
+            plt.ylabel(axis_labels[1])      
+    return None
