@@ -463,7 +463,7 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
 
     return None
 
-def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="Blues",alpha=1.,fill=True):
+def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="Blues",alpha=1.,fill=True,fontsize=20,tickfontsize=20):
     """Given an MCMC output paramsamples.shape = (nparams,N) a 1D function func(x,params) that 
         depends on params and a given range x, use the samples to create a plot with confidence 
         intervals on the derived parameters. func should be vectorized."""
@@ -490,6 +490,7 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
         ax.fill_between(x,confs[:,3],confs[:,4],facecolor=cm(0.75),lw=0,alpha=alpha)
         ax.fill_between(x,confs[:,0],confs[:,1],facecolor=cm(0.75),lw=0,alpha=alpha)
         ax.set_xlim((np.min(x),np.max(x)))
+        ax.tick_params(labelsize=tickfontsize)
         if axis_labels is not None:
             ax.set_xlabel(axis_labels[0])
             ax.set_ylabel(axis_labels[1])
@@ -499,24 +500,45 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
         plt.fill_between(x,confs[:,3],confs[:,4],facecolor=cm(0.3),lw=0,alpha=alpha)
         plt.fill_between(x,confs[:,0],confs[:,1],facecolor=cm(0.3),lw=0,alpha=alpha)
         plt.xlim((np.min(x),np.max(x)))
+        plt.gca().tick_params(labelsize=tickfontsize)
         if axis_labels is not None:
-            plt.xlabel(axis_labels[0])
-            plt.ylabel(axis_labels[1])
+            plt.xlabel(axis_labels[0],fontsize=fontsize)
+            plt.ylabel(axis_labels[1],fontsize=fontsize)
     elif ax is not None and fill is False:
         #only plot the 1 sigma lines if no fill, otherwise it looks too messy
         ax.plot(x,confs[:,1],c=cm(.5))
         ax.plot(x,confs[:,2],c=cm(.5))
         ax.plot(x,confs[:,3],c=cm(.5))
         ax.set_xlim((np.min(x),np.max(x)))
+        ax.tick_params(labelsize=tickfontsize)
         if axis_labels is not None:
-            plt.xlabel(axis_labels[0])
-            plt.ylabel(axis_labels[1])
+            plt.xlabel(axis_labels[0],fontsize=fontsize)
+            plt.ylabel(axis_labels[1],fontsize=fontsize)
     else:
         plt.plot(x,confs[:,1],c=cm(.5))
         plt.plot(x,confs[:,2],c=cm(.5))
         plt.plot(x,confs[:,3],c=cm(.5))   
         plt.xlim((np.min(x),np.max(x)))
+        plt.gca().tick_params(labelsize=tickfontsize)
         if axis_labels is not None:
-            plt.xlabel(axis_labels[0])
-            plt.ylabel(axis_labels[1])      
+            plt.xlabel(axis_labels[0],fontsize=fontsize)
+            plt.ylabel(axis_labels[1],fontsize=fontsize)      
+    return None
+
+def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="Blues",labels=None,ax=None,fname=None,aspect_ratio="auto"):
+    """Plot a contour map which consists of filled contours and line contours"""
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+    fc = ax.contourf(x,y,z,ncontours,cmap=cmap) #do the filled contours
+    if labels is not None: #add labels if provided
+        ax.set_xlabel(labels[0])
+        ax.set_ylabel(labels[1])
+        plt.colorbar(fc,label=labels[2])
+    else: #if not, just do the colorbar
+        plt.colorbar(fc)
+    ax.contour(x,y,z,ncontours,linewidths=linewidth,colors=linecolor) #now do the lines
+    ax.set_aspect(aspect_ratio)
+    if fname is not None:
+        fig.savefig(fname) #save if path provided
     return None
