@@ -183,9 +183,13 @@ def angular_radius_selection(ra,dec,pos,radius):
     idx = np.sin(dec0)*np.sin(np.radians(dec)) + np.cos(dec0)*np.cos(np.radians(dec))*np.cos(ra0-np.radians(ra)) > np.cos(np.pi*radius/180.)
     return ra[idx],dec[idx],idx
 
-def BHB_distance(g,r):
-    """given the SDSS g and r band magnitudes of a BHB, compute its distance using the relation from Deason et al. (2011)"""
-    G =  0.434 - 0.169*(g-r) +2.319*(g-r)**2. + 20.449*(g-r)**3. + 94.517*(g-r)**4.
+def BHB_distance(g,r,feh=None):
+    """given the SDSS g and r band magnitudes of a BHB, compute its distance using the relation from Deason et al. (2011)
+        or if metallicity is provided, use the relationship from Fermani & Schoenrich (2013)."""
+    if feh is None:
+        G =  0.434 - 0.169*(g-r) +2.319*(g-r)**2. + 20.449*(g-r)**3. + 94.517*(g-r)**4.
+    else:
+        G = 0.0075*np.exp(-14.*(g-r))+0.04*(feh+3.5)**2.+.25
     mu = g-G
     return (10.**(1.+.2*mu))/1000. #distance in kpc
 
@@ -253,8 +257,8 @@ def ChainResults(chain,burnin=None):
     if burnin:
         nwalkers,nsteps,ndim = np.shape(reshape_chain(chain))
         chain = chain[nwalkers*burnin:,:]
-    return map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
-                zip(*np.percentile(chain[:,1:],[16,50,84],axis=0)))
+    return np.array(map(lambda v: [v[1],v[2]-v[1],v[1]-v[0]],\
+                zip(*np.percentile(chain[:,1:],[16,50,84],axis=0))))
 
 
 class FuncWrapper(object):

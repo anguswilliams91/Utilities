@@ -16,7 +16,7 @@ import matplotlib.colors as colors
 import gus_utils as gu
 
 
-def kde_smooth(x,y,ax=None,xlims=None,ylims=None,linecolor='k',ninterp=200,linewidth=2.,ncontours=10,fill=None,cmap="Blues"):
+def kde_smooth(x,y,ax=None,xlims=None,ylims=None,linecolor='k',ninterp=200,linewidth=2.,ncontours=10,fill=None,cmap="YlGnBu"):
     """Smooth density estimator of scattered data to make better contour plots n.b. this is 
     going to be slow so only use it if you have sparse data"""
     vals = np.vstack((x.ravel(),y.ravel())) #can pass arrays of any shape
@@ -292,7 +292,7 @@ def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,label
     return None
 
 
-def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',tickfontsize=15):
+def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="YlGnBu",linecolor='k',ax=None,interp='nearest',tickfontsize=15):
     """Make a basic contour plot from scattered data, interp can be 'nearest','bilinear','bicubic' etc."""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
@@ -322,7 +322,7 @@ def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="hot_r"
         ax.set_aspect("auto")
     return None
 
-def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="hot_r",linecolor='k',ax=None,interp='nearest',dispersion=False):
+def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="YlGnBu",linecolor='k',ax=None,interp='nearest',dispersion=False):
     """Plot a map of the scalar function s as a function of x and y, given irregular data. Overplot contours of x and y. The mean of 
     s in each bin is plotted"""
     if logscalar is True and any(s<0.) is True:
@@ -387,7 +387,7 @@ def scalarmap1D(x,s=None,nbins=10,ax=None,log=False,errors=True,linecolor='k'):
         ax.plot(xc,fs,c=linecolor)
     return None
 
-def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="hot_r",colorlines=False,density=1.,linecolor='k'):
+def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="YlGnBu",colorlines=False,density=1.,linecolor='k'):
     """Make a streamplot of a 2D vector quantity, but averaged in a grid of pixels"""
     #Simon's hack for getting the means quick
     H,yedges,xedges = np.histogram2d(y,x,bins=nbins) #density histogram 
@@ -418,7 +418,7 @@ def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="hot_r",colorlines=False,density=1
     return None
 
 
-def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k',histunder=False,cmap="hot_r",filled=False,linewidth=1.):
+def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k',histunder=False,cmap="Blues",filled=False,linewidth=1.):
     """Draw confidence intervals at the levels asked from a 2d sample of points (e.g. 
         output of MCMC)"""
     if intervals is None:
@@ -525,7 +525,7 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
             plt.ylabel(axis_labels[1],fontsize=fontsize)      
     return None
 
-def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="Blues",labels=None,ax=None,fname=None,aspect_ratio="auto"):
+def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="YlGnBu",labels=None,ax=None,fname=None,aspect_ratio="auto"):
     """Plot a contour map which consists of filled contours and line contours"""
     if ax is None:
         fig = plt.figure()
