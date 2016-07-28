@@ -437,6 +437,7 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
             v[i] = h[sm <= v0][-1]
         except:
             v[i] = h[0]
+    v =v[::-1]
 
     xc = np.array([.5*(xedges[i]+xedges[i+1]) for i in np.arange(nbins)]) #bin centres
     yc = np.array([.5*(yedges[i]+yedges[i+1]) for i in np.arange(nbins)])
@@ -446,20 +447,20 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
     if ax is None:
         if histunder:
             plt.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
-            plt.contour(xx,yy,H,levels=v[::-1],colors=linecolor,extend='max',linewidths=linewidth)
+            plt.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
         elif filled:
-            plt.contourf(xx,yy,H,levels=v[::-1],cmap=cmap)
+            plt.contourf(xx,yy,H,levels=v,cmap=cmap)
         else:
-            plt.contour(xx,yy,H,levels=v[::-1],colors=linecolor,linewidths=linewidth)
+            plt.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)
     else:
         if histunder:
             ax.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
-            ax.contour(xx,yy,H,levels=v[::-1],colors=linecolor,extend='max',linewidths=linewidth)
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
         elif filled:
-            ax.contourf(xx,yy,H,levels=v[::-1],cmap=cmap)
-            ax.contour(xx,yy,H,levels=v[::-1],colors=linecolor,extend='max',linewidths=linewidth)
+            ax.contourf(xx,yy,H,levels=v,cmap=cmap)
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
         else:
-            ax.contour(xx,yy,H,levels=v[::-1],colors=linecolor,linewidths=linewidth)        
+            ax.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)        
 
     return None
 
