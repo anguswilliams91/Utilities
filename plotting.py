@@ -526,7 +526,8 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
             plt.ylabel(axis_labels[1],fontsize=fontsize)      
     return None
 
-def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="YlGnBu",labels=None,ax=None,fname=None,aspect_ratio="auto"):
+def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="YlGnBu",labels=None,ax=None,fname=None,aspect_ratio="auto",\
+                        cbar_orientation='vertical'):
     """Plot a contour map which consists of filled contours and line contours"""
     if ax is None:
         fig = plt.figure()
@@ -535,10 +536,10 @@ def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="YlGnBu"
     if labels is not None: #add labels if provided
         ax.set_xlabel(labels[0])
         ax.set_ylabel(labels[1])
-        plt.colorbar(fc,label=labels[2])
+        plt.colorbar(fc,label=labels[2],orientation=cbar_orientation)
     else: #if not, just do the colorbar
-        plt.colorbar(fc)
-    ax.contour(x,y,z,ncontours,linewidths=linewidth,colors=linecolor) #now do the lines
+        plt.colorbar(fc,orientation=cbar_orientation)
+    if linewidth>0.: ax.contour(x,y,z,ncontours,linewidths=linewidth,colors=linecolor) #now do the lines
     ax.set_aspect(aspect_ratio)
     if fname is not None:
         fig.savefig(fname) #save if path provided
