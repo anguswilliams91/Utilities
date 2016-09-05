@@ -15,9 +15,6 @@ import pylab
 import matplotlib.colors as colors
 import gus_utils as gu
 
-#added a useless comment
-
-
 def kde_smooth(x,y,ax=None,xlims=None,ylims=None,linecolor='k',ninterp=200,linewidth=2.,ncontours=10,fill=None,cmap="YlGnBu"):
     """Smooth density estimator of scattered data to make better contour plots n.b. this is 
     going to be slow so only use it if you have sparse data"""
@@ -429,17 +426,10 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
 
 
     #get the contour levels
-    h = H.flatten()
-    h = h[np.argsort(h)[::-1]]
-    sm = np.cumsum(h)
-    sm/=sm[-1]
-    v = np.empty(len(intervals))
-    for i,v0 in enumerate(intervals):
-        try:
-            v[i] = h[sm <= v0][-1]
-        except:
-            v[i] = h[0]
-    v =v[::-1]
+    h = H.flatten()[np.argsort(H.flatten())[::-1]]
+    cdf = np.cumsum(h)/np.cumsum(h)[-1]
+    v = np.array([h[ cdf<=li ][-1] for li in intervals[1:]])[::-1]
+    v = np.append(v,h[0])
 
     xc = np.array([.5*(xedges[i]+xedges[i+1]) for i in np.arange(nbins)]) #bin centres
     yc = np.array([.5*(yedges[i]+yedges[i+1]) for i in np.arange(nbins)])
