@@ -15,6 +15,8 @@ import pylab
 import matplotlib.colors as colors
 import gus_utils as gu
 
+#added a useless comment
+
 
 def kde_smooth(x,y,ax=None,xlims=None,ylims=None,linecolor='k',ninterp=200,linewidth=2.,ncontours=10,fill=None,cmap="YlGnBu"):
     """Smooth density estimator of scattered data to make better contour plots n.b. this is 
