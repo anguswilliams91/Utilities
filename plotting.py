@@ -30,15 +30,11 @@ def kde_smooth(x,y,ax=None,xlims=None,ylims=None,linecolor='k',ninterp=200,linew
     pos = np.vstack((X.ravel(),Y.ravel())) #shape required by kernel
     Z = np.reshape(kernel(pos).T,X.shape) #interpolated values
     if ax is None:
-        if fill:
-            plt.contourf(X,Y,Z,ncontours,cmap=cmap)
-            plt.colorbar()
-        plt.contour(X,Y,Z,ncontours,colors=linecolor,linewidths=linewidth)
-    else:
-        if fill:
-            ax.contourf(X,Y,Z,ncontours,cmap=cmap)
-            plt.colorbar()
-        ax.contour(X,Y,Z,ncontours,colors=linecolor,linewidths=linewidth)
+        fig,ax = plt.subplots()
+    if fill:
+        ax.contourf(X,Y,Z,ncontours,cmap=cmap)
+        plt.colorbar()
+    ax.contour(X,Y,Z,ncontours,colors=linecolor,linewidths=linewidth)
     return None        
 
 
@@ -291,35 +287,25 @@ def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,label
     return None
 
 
-def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="YlGnBu",linecolor='k',ax=None,interp='nearest',tickfontsize=15):
+def gus_contour(x,y,nbins=20,ncontours=10,log=False,histunder=False,cmap="YlGnBu",linecolor='k',ax=None,interp='nearest',tickfontsize=15,\
+                    linewidth=1.):
     """Make a basic contour plot from scattered data, interp can be 'nearest','bilinear','bicubic' etc."""
     H,xedges,yedges = np.histogram2d(y,x,bins=nbins)
     extent = [yedges[0],yedges[-1],xedges[0],xedges[-1]]
     if ax is None:
-        if not log: plt.contour(H,ncontours,extent=extent,colors=linecolor)
-        else:
-            levels = np.logspace(.2*np.max(np.log(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
-            plt.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
-        if histunder and not log:
-            plt.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
-        elif histunder:
-            plt.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
-        plt.gca().set_aspect("auto")
-        plt.gca().tick_params(labelsize=tickfontsize)
-        plt.gca().set_aspect("auto")
+        fig,ax = plt.subplots()
+    if not log: ax.contour(H,ncontours,extent=extent,colors=linecolor,linewidths=linewidth)
     else:
-        if not log: ax.contour(H,ncontours,extent=extent,colors=linecolor)
-        else:
-            levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
-            ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
-        if histunder and not log:
-            ax.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
-        elif histunder:
-            ax.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
-        ax.set_aspect("auto")
-        ax.tick_params(labelsize=tickfontsize)
-        ax.set_aspect("auto")
-    return None
+        levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
+        ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels,linewidths=linewidth)
+    if histunder and not log:
+        ax.imshow(H,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+    elif histunder:
+        ax.imshow(H,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+    ax.set_aspect("auto")
+    ax.tick_params(labelsize=tickfontsize)
+    ax.set_aspect("auto")
+    return ax
 
 def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="YlGnBu",linecolor='k',ax=None,interp='nearest',dispersion=False):
     """Plot a map of the scalar function s as a function of x and y, given irregular data. Overplot contours of x and y. The mean of 
@@ -337,26 +323,17 @@ def scalarmap(x,y,s,nbins=10,ncontours=10,logdens=False,logscalar=False,cmap="Yl
         H_s = np.sqrt(H_m2/H - (H_m/H)**2.) #the dispersion in each pixel
     extent = [xedges[0],xedges[-1],yedges[0],yedges[-1]]
     if ax is None:
-        if not logdens: plt.contour(H,ncontours,extent=extent,colors=linecolor)
-        else:
-            levels = np.logspace(.2*np.max(np.log(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
-            plt.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
-        if not logscalar:
-            plt.imshow(H_s,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
-        else:
-            plt.imshow(H_s,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)
-        plt.gca().set_aspect("auto")
+        fig,ax = plt.subplots()
+    if not logdens: ax.contour(H,ncontours,extent=extent,colors=linecolor)
     else:
-        if not logdens: ax.contour(H,ncontours,extent=extent,colors=linecolor)
-        else:
-            levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
-            ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
-        if not logscalar:
-            ax.imshow(H_s,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
-        else:
-            ax.imshow(H_s,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
-        ax.set_aspect("auto")
-    return xedges,yedges,H,H_s 
+        levels = np.logspace(.2*np.max(np.log10(H[H!=0.])),np.max(np.log(H[H!=0.])),ncontours)
+        ax.contour(H,extent=extent,colors=linecolor,norm=LogNorm(),levels=levels)
+    if not logscalar:
+        ax.imshow(H_s,interpolation=interp,extent=extent,origin='lower',cmap=cmap)
+    else:
+        ax.imshow(H_s,interpolation=interp,extent=extent,origin='lower',norm=LogNorm(),cmap=cmap)  
+    ax.set_aspect("auto")
+    return ax 
 
 def scalarmap1D(x,s=None,nbins=10,ax=None,log=False,errors=True,linecolor='k'):
     """same as above but for 1D case, if s is None then just does a density plot"""
@@ -372,15 +349,13 @@ def scalarmap1D(x,s=None,nbins=10,ax=None,log=False,errors=True,linecolor='k'):
     else:
         fs = H
     xc = np.array([np.mean([xedges[i],xedges[i+1]]) for i in np.arange(nbins)])
-    if ax is None and log:
-        plt.loglog(xc,fs,c=linecolor)
-    elif ax is None and not log and not errors:
+    if ax is None:
+        fig,ax = plt.subplots()
+    if not log and not errors:
         plt.plot(xc,fs,c=linecolor)
-    elif ax is not None and log:
+    elif log:
         ax.loglog(xc,fs,c=linecolor)
-    elif errors and ax is None:
-        plt.errorbar(xc,fs,yerr=disp,c=linecolor)
-    elif errors and ax is not None:
+    elif errors:
         ax.errorbar(xc,fs,yerr=disp,c=linecolor)
     else:
         ax.plot(xc,fs,c=linecolor)
@@ -398,15 +373,9 @@ def vectormap(x,y,vx,vy,nbins=10,ax=None,cmap="YlGnBu",colorlines=False,density=
     yc = np.array([.5*(yedges[i]+yedges[i+1]) for i in np.arange(nbins)])
     #meshgrid to make arrays for streamplot
     xx,yy = np.meshgrid(xc,yc)
-    if ax is None and colorlines is False:
-        plt.streamplot(xx,yy,vxm,vym,density=density,color=linecolor)
-        plt.xlim((xedges[0],xedges[-1]))
-        plt.ylim((yedges[0],yedges[-1]))
-    elif ax is None and colorlines is True:
-        plt.streamplot(xx,yy,vxm,vym,density=density,color=np.sqrt(vxm**2.+vym**2.),cmap=cmap)
-        plt.xlim((xedges[0],xedges[-1]))
-        plt.ylim((yedges[0],yedges[-1]))
-    elif ax is not None and colorlines is False:
+    if ax is None:
+        fig,ax = plt.subplots()
+    if colorlines is False:
         ax.streamplot(xx,yy,vxm,vym,density=density,color=linecolor)
         ax.set_xlim((xedges[0],xedges[-1]))
         ax.set_ylim((yedges[0],yedges[-1]))
@@ -437,24 +406,17 @@ def confidence_2d(xsamples,ysamples,ax=None,intervals=None,nbins=20,linecolor='k
     xx,yy = np.meshgrid(xc,yc)
 
     if ax is None:
-        if histunder:
-            plt.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
-            plt.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
-        elif filled:
-            plt.contourf(xx,yy,H,levels=v,cmap=cmap)
-        else:
-            plt.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)
+        fig,ax = plt.subplots()
+    if histunder:
+        ax.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
+        ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
+    elif filled:
+        ax.contourf(xx,yy,H,levels=v,cmap=cmap)
+        ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
     else:
-        if histunder:
-            ax.hist2d(xsamples,ysamples,bins=nbins,cmap=cmap)
-            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
-        elif filled:
-            ax.contourf(xx,yy,H,levels=v,cmap=cmap)
-            ax.contour(xx,yy,H,levels=v,colors=linecolor,extend='max',linewidths=linewidth)
-        else:
-            ax.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)        
+        ax.contour(xx,yy,H,levels=v,colors=linecolor,linewidths=linewidth)        
 
-    return None
+    return ax
 
 def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="Blues",alpha=1.,fill=True,fontsize=20,tickfontsize=20):
     """Given an MCMC output paramsamples.shape = (nparams,N) a 1D function func(x,params) that 
@@ -470,6 +432,8 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
         funsamples[i] = func(x[i],paramsamples)
     #now compute the confidence intervals of the function at each position
     confs = np.zeros((len(x),5))
+    if ax is None:
+        fig,ax = plt.subplots()
     for i in np.arange(len(x)):
         confs[i,0] = np.percentile(funsamples[i],3)
         confs[i,1] = np.percentile(funsamples[i],16)
@@ -477,7 +441,7 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
         confs[i,3] = np.percentile(funsamples[i],84)
         confs[i,4] = np.percentile(funsamples[i],97)
     #now plot 
-    if ax is not None and fill is True:
+    if fill is True:
         ax.plot(x,confs[:,2],c=cm(1.))
         ax.fill_between(x,confs[:,1],confs[:,3],facecolor=cm(0.25),lw=0,alpha=alpha)
         ax.fill_between(x,confs[:,3],confs[:,4],facecolor=cm(0.75),lw=0,alpha=alpha)
@@ -487,17 +451,7 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
         if axis_labels is not None:
             ax.set_xlabel(axis_labels[0])
             ax.set_ylabel(axis_labels[1])
-    elif ax is None and fill is True:
-        plt.plot(x,confs[:,2],c=cm(1.))
-        plt.fill_between(x,confs[:,1],confs[:,3],facecolor=cm(0.7),lw=0,alpha=alpha)
-        plt.fill_between(x,confs[:,3],confs[:,4],facecolor=cm(0.3),lw=0,alpha=alpha)
-        plt.fill_between(x,confs[:,0],confs[:,1],facecolor=cm(0.3),lw=0,alpha=alpha)
-        plt.xlim((np.min(x),np.max(x)))
-        plt.gca().tick_params(labelsize=tickfontsize)
-        if axis_labels is not None:
-            plt.xlabel(axis_labels[0],fontsize=fontsize)
-            plt.ylabel(axis_labels[1],fontsize=fontsize)
-    elif ax is not None and fill is False:
+    else:
         #only plot the 1 sigma lines if no fill, otherwise it looks too messy
         ax.plot(x,confs[:,1],c=cm(.5))
         ax.plot(x,confs[:,2],c=cm(.5))
@@ -506,24 +460,14 @@ def posterior_1D(paramsamples,x,func,burnin=None,axis_labels=None,ax=None,cmap="
         ax.tick_params(labelsize=tickfontsize)
         if axis_labels is not None:
             plt.xlabel(axis_labels[0],fontsize=fontsize)
-            plt.ylabel(axis_labels[1],fontsize=fontsize)
-    else:
-        plt.plot(x,confs[:,1],c=cm(.5))
-        plt.plot(x,confs[:,2],c=cm(.5))
-        plt.plot(x,confs[:,3],c=cm(.5))   
-        plt.xlim((np.min(x),np.max(x)))
-        plt.gca().tick_params(labelsize=tickfontsize)
-        if axis_labels is not None:
-            plt.xlabel(axis_labels[0],fontsize=fontsize)
-            plt.ylabel(axis_labels[1],fontsize=fontsize)      
-    return None
+            plt.ylabel(axis_labels[1],fontsize=fontsize)     
+    return ax
 
 def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="YlGnBu",labels=None,ax=None,fname=None,aspect_ratio="auto",\
                         cbar_orientation='vertical'):
     """Plot a contour map which consists of filled contours and line contours"""
     if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        fig,ax = plt.subplots()
     fc = ax.contourf(x,y,z,ncontours,cmap=cmap) #do the filled contours
     if labels is not None: #add labels if provided
         ax.set_xlabel(labels[0])
@@ -535,4 +479,4 @@ def regular_contour(x,y,z,ncontours=20,linewidth=0.5,linecolor='k',cmap="YlGnBu"
     ax.set_aspect(aspect_ratio)
     if fname is not None:
         fig.savefig(fname) #save if path provided
-    return None
+    return ax
