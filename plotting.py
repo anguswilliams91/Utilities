@@ -261,7 +261,7 @@ def PlotTraces(chain,burnin=None,axis_labels=None,nticks=4,tickfontsize=10,label
     if axis_labels is not None and len(axis_labels)!=ndim:
         print "You've messed up the number of axis labels"
         return None
-    fig = plt.figure( num = None, figsize = (ndim,9.*ndim))
+    fig = plt.figure( num = None, figsize = (9.,9.*ndim))
     gs = gridspec.GridSpec(ndim,1)
     gs.update(wspace=0.,hspace=0.)
     for i in np.arange(ndim):
